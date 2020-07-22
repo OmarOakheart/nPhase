@@ -1,6 +1,8 @@
 # nPhase
 Ploidy agnostic phasing pipeline and algorithm
 
+![Alt text](/nPhasePipeline.jpg?raw=true "nPhase Pipeline")
+
 # Quick-start
 
 If you have bioconda you can install nPhase by running the following commands in your terminal:
