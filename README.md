@@ -123,11 +123,15 @@ optional arguments:
 
 Coming soon...
 
+## How to cite
+
+Coming soon...
+
 # Media
 
 Online lightning talk I gave about nPhase for an Oxford Nanopore event [5:44]: [link](https://drive.google.com/file/d/16quLufiNhICXqmAAGRYEIy1MivWVMXVI/view?usp=sharing)
 
-# Misc
+## Misc
 
 Current recommendations for default parameters are at least 20X coverage per haplotype (so 60X for a triploid) and a heterozygosity level of at least 0.4% (average of 1 heterozygous SNP every 250 bp).
 
