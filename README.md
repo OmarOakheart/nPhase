@@ -1,5 +1,31 @@
 # nPhase
 Ploidy agnostic phasing pipeline and algorithm
 
-Please come back soon if you're interested in using nPhase, I'm still checking that everything works as intended on a clean install before uploading the code.
+# Installation
+
+## With conda
+
+conda create -n nPhasePipeline python=3.8 nPhase
+conda activate nPhasePipeline
+conda install -c oakheart nphase
+
+## Without conda
+
+You will have to install the following software before nPhase:
+
+Python ≥3.8
+
+bwa mem
+
+GATK 4.0
+
+samtools v1.9
+
+ngmlr
+
+You can then install nPhase via
+
+pip install -U nPhase
+
+# Usage
 
