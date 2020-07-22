@@ -14,7 +14,10 @@ conda install -c oakheart nphase
 Then you can phase your data with the following command:
 
 ```
-nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_referenceGenome.fasta --R1 /path/to/Individual_1_shortReads_R1.fastq.gz --R2 /path/to/Individual_1_shortReads_R2.fastq.gz --longreads /path/to/Individual_1_longReads.fastq.gz --longReadPlatform [ont|pacbio] --output /path/to/outputFolder
+nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_referenceGenome.fasta 
+                --R1 /path/to/Individual_1_shortReads_R1.fastq.gz --R2 /path/to/Individual_1_shortReads_R2.fastq.gz
+                --longreads /path/to/Individual_1_longReads.fastq.gz --longReadPlatform [ont|pacbio]
+                --output /path/to/outputFolder
 ```
 
 
