@@ -24,13 +24,12 @@ nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_refere
 
 Install conda and set the correct channels by following the first two steps here: https://bioconda.github.io/user/install.html
 
-Then you can create a new encironment and install nPhase with the following commands:
-
-conda create -n nPhasePipeline python=3.8 nPhase
-
-conda activate nPhasePipeline
-
+Then you can create a new environment and install nPhase with the following commands:
+```
+conda create -n nPhasePipeline python=3.8 nPhase  
+conda activate nPhasePipeline  
 conda install -c oakheart nphase
+```
 
 ## Without conda
 
@@ -38,21 +37,21 @@ conda install -c oakheart nphase
 
 You will have to install the following software before nPhase:
 
-Python ≥3.8
+[Python ≥3.8](https://www.python.org/downloads/)
 
-bwa mem
+[bwa mem](https://github.com/lh3/bwa)
 
-GATK 4.0
+[GATK 4.0](https://github.com/broadinstitute/gatk)
 
-samtools v1.9
+[samtools v1.9](https://github.com/samtools/samtools/tree/1.9)
 
-ngmlr
+[ngmlr](https://github.com/philres/ngmlr)
 
 ### Installation via PyPI
 
-You can then install nPhase via
+You can now install nPhase via
 
-pip install -U nPhase
+`pip install -U nPhase`
 
 # Usage
 
