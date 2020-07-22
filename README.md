@@ -6,7 +6,9 @@ Ploidy agnostic phasing pipeline and algorithm
 ## With conda
 
 conda create -n nPhasePipeline python=3.8 nPhase
+
 conda activate nPhasePipeline
+
 conda install -c oakheart nphase
 
 ## Without conda
