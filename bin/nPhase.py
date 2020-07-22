@@ -3,142 +3,6 @@ from itertools import combinations
 import sys
 import sortedcontainers
 
-minIONSNPAssignments=sys.argv[1] #"/home/oabousaada/HPhasing/phenovarTempValidation/${coverage}X/${strain}/VariantCalls/MinION/${strain}.hetPositions.SNPxMinION.validated.tsv"
-strainName=sys.argv[2] #"${strain}"
-contextDepthsFilePath=sys.argv[3] #"/home/oabousaada/HPhasing/phenovarTempValidation/${coverage}X/${strain}/Overlaps/${strain}.contextDepths.tsv"
-outFolder=sys.argv[4]
-referenceFilePath=sys.argv[5]
-minSim=float(sys.argv[6])
-minOvl=float(sys.argv[7])
-minLen=float(sys.argv[8])
-maxID=float(sys.argv[9])
-
-#Loading files
-
-#Getting reference info
-print("Loading reference file.")
-
-referenceDict={}
-
-referenceFile=open(referenceFilePath,"r")
-
-for line in referenceFile:
-    line=line.strip("\n")
-    if line[0]==">":
-        contigName=line[1:].replace(" ","")
-        referenceDict[contigName]={"sequence":"","length":0}
-    else:
-        referenceDict[contigName]["sequence"]+=line
-        referenceDict[contigName]["length"]+=len(line)
-
-referenceFile.close()
-
-previousLength=0
-
-for k,v in referenceDict.items():
-    referenceDict[k]["startPosition"]=previousLength
-    previousLength=v["length"]+previousLength
-
-print("Reference file loaded.")
-
-print("Loading reads.")
-
-SNPAssignmentFile=open(minIONSNPAssignments,"r")
-
-SNPAssignments={}
-
-for line in SNPAssignmentFile:
-    line=line.strip("\n").split("\t")
-    SNPAssignments[line[0]]=frozenset(line[1:])
-
-SNPAssignmentFile.close()
-
-print("Reads loaded.")
-
-#Checking if there are any split reads:
-for v in SNPAssignments.values():
-    if len(set(SNP.split(":")[0] for SNP in v))>1:
-        print("THERE ARE SPLIT READS IN:",v)
-        break
-
-#######################
-#We need the context depth info:
-
-print("Loading context depth.")
-
-contextDepths={}
-
-contextDepthsLines=[]
-
-contextDepthsFile=open(contextDepthsFilePath,"r")
-for line in contextDepthsFile:
-    line=line.strip("\n").split("\t")
-    contextDepthsLines.append(line)
-
-contextDepthsFile.close()
-
-for line in contextDepthsLines:
-    contextDepths[line[0]]={}
-    for context, count in zip(line[1::2],line[2::2]):
-        contextDepths[line[0]][frozenset(context.split(" "))]=int(count)
-
-print("Context depth loaded")
-
-#Getting chimeric read names
-chimericNames=set()
-
-for readName, sequence in SNPAssignments.items():
-    if len(readName[len(strainName)+1:].split("_"))>1:
-        chimericNames.add("_".join(readName.split("_")[:-1]))
-
-print("Split reads identified.")
-
-#Applying the context depth info to all of the reads
-chimericReadIDict={}
-for readName, sequence in SNPAssignments.items():
-    if len(readName[len(strainName)+1:].split("_"))>1 or readName in chimericNames:
-        if len(readName[len(strainName)+1:].split("_"))>1:
-            readName="_".join(readName.split("_")[:-1])
-        allBaseDict={}
-        if len(sequence)>=10:
-            sequence=set(sequence)
-            positions=[]
-            for base in sequence:
-                base=base.split("=")
-                positions.append(base[0])
-                allBaseDict.setdefault(base[0],{"demo":{base[1]:0},"stats":{"total":0,"N":0}}).update({"demo":{base[1]:0}})
-                for context, contextCount in contextDepths[base[0]+"="+base[1]].items():
-                    if context.issubset(sequence):
-                        allBaseDict[base[0]]["demo"][base[1]]+=contextCount
-                        allBaseDict[base[0]]["stats"]["total"]+=contextCount
-                        allBaseDict[base[0]]["stats"]["N"]+=1
-            for basePos, bases in allBaseDict.items():
-                for base in allBaseDict[basePos]["demo"].keys():
-                    allBaseDict[basePos]["demo"][base]=allBaseDict[basePos]["demo"][base]/allBaseDict[basePos]["stats"]["total"]
-            chimericReadIDict.setdefault("chimeric-"+readName,{}).update(allBaseDict)
-
-print("Split reads processed.")
-
-#Getting all reads
-readIDict={}
-for readName, sequence in SNPAssignments.items():
-    if len(sequence)>=10:
-        allBaseDict={}
-        for base in sequence:
-            base=base.split("=")
-            allBaseDict.setdefault(base[0],{"demo":{base[1]:0},"stats":{"total":0,"N":0}}).update({"demo":{base[1]:0}})
-            for context, contextCount in contextDepths[base[0]+"="+base[1]].items():
-                if context.issubset(sequence):
-                    allBaseDict[base[0]]["demo"][base[1]]+=contextCount
-                    allBaseDict[base[0]]["stats"]["total"]+=contextCount
-                    allBaseDict[base[0]]["stats"]["N"]+=1
-        for basePos, bases in allBaseDict.items():
-            for base in allBaseDict[basePos]["demo"].keys():
-                allBaseDict[basePos]["demo"][base]=allBaseDict[basePos]["demo"][base]/allBaseDict[basePos]["stats"]["total"]
-        readIDict[readName]=allBaseDict
-
-print("All reads processed.")
-
 def identity(readIDict,clusterAID,clusterBID,commonPositions):
     allBaseDict={}
     for position in commonPositions:
@@ -264,7 +128,7 @@ def getSimilarity(consensusA,consensusB,commonPos,minOvl,minSim):
         localSimilarity=0
     return localSimilarity
 
-def initializeCache(readIDict,name):
+def initializeCache(readIDict,name,contextDepths):
     cache={}
     i=0
     for cluster in readIDict.keys():
@@ -310,13 +174,13 @@ def generateSimilarityIndex(cache):
             similarityIndex.add([score,len(similarPositions),simCluster,combination])
     return similarityIndex
 
-def clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim):
+def clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths):
     prevLen=0
     allReadIDict={}
     allReadIDict.update(readIDict)
     #Initializing cachedCluster
     print("Initializing cachedCluster")
-    cachedSimilarities=initializeCache(readIDict,"cluster")
+    cachedSimilarities=initializeCache(readIDict,"cluster",contextDepths)
     #Filling cachedCluster with similarity info
     print("Filling cachedCluster with similarity information")
     cachedSimilarities=fillCache(cachedSimilarities,minOvl,minSim)
@@ -488,7 +352,7 @@ def keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClus
                 i+=1
     return usefulSplitReads
 
-def giveMeData(clusters,refTable):
+def giveMeFullData(clusters,refTable):
     clusterText=""
     sortedClusterLines=sortedcontainers.SortedList()
     clusterFirst={}
@@ -518,68 +382,200 @@ def giveMeData(clusters,refTable):
         clusterText+="\t".join([str(x) for x in line])+"\n"
     return clusterText
 
-baseClusters,fullClusters=clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim)
+def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,referenceFilePath,minSim,minOvl,minLen,maxID):
 
-baseClusterEdges=getBaseClusterEdges(100,baseClusters)
+    #Loading files
 
-mergedClusterEdges=mergeClusterEdges(baseClusterEdges)
+    #Getting reference info
+    print("Loading reference file.")
 
-splitReadPositions=getSplitReadPositions(chimericReadIDict)
-splitReadProfiles=getSplitEdgeOverlapProfiles(splitReadPositions,mergedClusterEdges)
+    referenceDict={}
 
-usefulSplitReadProfiles=set()
-for profile in splitReadProfiles:
-    if len(profile)>=2:
-        usefulSplitReadProfiles.add(profile)
+    referenceFile=open(referenceFilePath,"r")
 
-mergedSplitReadProfiles=mergeClusterEdges(usefulSplitReadProfiles)
+    for line in referenceFile:
+        line=line.strip("\n")
+        if line[0]==">":
+            contigName=line[1:].replace(" ","")
+            referenceDict[contigName]={"sequence":"","length":0}
+        else:
+            referenceDict[contigName]["sequence"]+=line
+            referenceDict[contigName]["length"]+=len(line)
 
-newChimericDict=keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClusterEdges)
+    referenceFile.close()
 
-cleanAllReadIDict={}
-cleanAllReadIDict.update(readIDict)
-cleanAllReadIDict.update(newChimericDict)
+    previousLength=0
 
-cleanAllClusters,cleanFullClusters=clusterInterlockChimera(minOvl,cleanAllReadIDict,maxID,minLen,minSim)
+    for k,v in referenceDict.items():
+        referenceDict[k]["startPosition"]=previousLength
+        previousLength=v["length"]+previousLength
 
-#############
-#OUTPUT CODE#
-#############
+    print("Reference file loaded.")
 
-visDataText=giveMeData(cleanAllClusters,referenceDict)
-visDataFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_visData.tsv","w")
+    print("Loading reads.")
 
-visDataFile.write(visDataText)
-visDataFile.close()
+    SNPAssignmentFile=open(longReadSNPAssignments,"r")
 
-#Create sets of fastQ read names, to be turned into FASTQ files by another script
+    SNPAssignments={}
 
-st=len(strainName)
+    for line in SNPAssignmentFile:
+        line=line.strip("\n").split("\t")
+        SNPAssignments[line[0]]=frozenset(line[1:])
 
-clusterReadText=""
+    SNPAssignmentFile.close()
 
-for clusterName, clusterInfo in cleanFullClusters.items():
-    for readName in clusterInfo["names"]:
-        readName=readName.replace("chimeric-","")
-        readName=readName[:st+1]+readName[st+1:].split("_")[0]
-        clusterReadText+="\t".join([clusterName,readName])+"\n"
+    print("Reads loaded.")
 
-clusterReadFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_clusterReadNames.tsv","w")
-clusterReadFile.write(clusterReadText)
-clusterReadFile.close()
+    #Checking if there are any split reads:
+    for v in SNPAssignments.values():
+        if len(set(SNP.split(":")[0] for SNP in v))>1:
+            print("THERE ARE SPLIT READS IN:",v)
+            break
 
-#A tab separated file that shows you which SNPs were predicted to be in the same haplotigs
+    #######################
+    #We need the context depth info:
 
-phasedSNPText=""
+    print("Loading context depth.")
 
-for clusterName, clusterInfo in cleanFullClusters.items():
-    for SNP in clusterInfo["consensus"]:
-        chrom=SNP.split(":")[0]
-        pos=SNP.split(":")[1].split("=")[0]
-        base=SNP.split("=")[1]
-        phasedSNPText+="\t".join([clusterName,chrom,pos,base])+"\n"
+    contextDepths={}
 
-phasedSNPFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_variants.tsv","w")
-phasedSNPFile.write(phasedSNPText)
-phasedSNPFile.close()
+    contextDepthsLines=[]
+
+    contextDepthsFile=open(contextDepthsFilePath,"r")
+    for line in contextDepthsFile:
+        line=line.strip("\n").split("\t")
+        contextDepthsLines.append(line)
+
+    contextDepthsFile.close()
+
+    for line in contextDepthsLines:
+        contextDepths[line[0]]={}
+        for context, count in zip(line[1::2],line[2::2]):
+            contextDepths[line[0]][frozenset(context.split(" "))]=int(count)
+
+    print("Context depth loaded")
+
+    #Getting chimeric read names
+    chimericNames=set()
+
+    for readName, sequence in SNPAssignments.items():
+        if len(readName[len(strainName)+1:].split("_"))>1:
+            chimericNames.add("_".join(readName.split("_")[:-1]))
+
+    print("Split reads identified.")
+
+    #Applying the context depth info to all of the reads
+    chimericReadIDict={}
+    for readName, sequence in SNPAssignments.items():
+        if len(readName[len(strainName)+1:].split("_"))>1 or readName in chimericNames:
+            if len(readName[len(strainName)+1:].split("_"))>1:
+                readName="_".join(readName.split("_")[:-1])
+            allBaseDict={}
+            if len(sequence)>=10:
+                sequence=set(sequence)
+                positions=[]
+                for base in sequence:
+                    base=base.split("=")
+                    positions.append(base[0])
+                    allBaseDict.setdefault(base[0],{"demo":{base[1]:0},"stats":{"total":0,"N":0}}).update({"demo":{base[1]:0}})
+                    for context, contextCount in contextDepths[base[0]+"="+base[1]].items():
+                        if context.issubset(sequence):
+                            allBaseDict[base[0]]["demo"][base[1]]+=contextCount
+                            allBaseDict[base[0]]["stats"]["total"]+=contextCount
+                            allBaseDict[base[0]]["stats"]["N"]+=1
+                for basePos, bases in allBaseDict.items():
+                    for base in allBaseDict[basePos]["demo"].keys():
+                        allBaseDict[basePos]["demo"][base]=allBaseDict[basePos]["demo"][base]/allBaseDict[basePos]["stats"]["total"]
+                chimericReadIDict.setdefault("chimeric-"+readName,{}).update(allBaseDict)
+
+    print("Split reads processed.")
+
+    #Getting all reads
+    readIDict={}
+    for readName, sequence in SNPAssignments.items():
+        if len(sequence)>=10:
+            allBaseDict={}
+            for base in sequence:
+                base=base.split("=")
+                allBaseDict.setdefault(base[0],{"demo":{base[1]:0},"stats":{"total":0,"N":0}}).update({"demo":{base[1]:0}})
+                for context, contextCount in contextDepths[base[0]+"="+base[1]].items():
+                    if context.issubset(sequence):
+                        allBaseDict[base[0]]["demo"][base[1]]+=contextCount
+                        allBaseDict[base[0]]["stats"]["total"]+=contextCount
+                        allBaseDict[base[0]]["stats"]["N"]+=1
+            for basePos, bases in allBaseDict.items():
+                for base in allBaseDict[basePos]["demo"].keys():
+                    allBaseDict[basePos]["demo"][base]=allBaseDict[basePos]["demo"][base]/allBaseDict[basePos]["stats"]["total"]
+            readIDict[readName]=allBaseDict
+
+    print("All reads processed.")
+
+    baseClusters,fullClusters=clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths)
+
+    baseClusterEdges=getBaseClusterEdges(100,baseClusters)
+
+    mergedClusterEdges=mergeClusterEdges(baseClusterEdges)
+
+    splitReadPositions=getSplitReadPositions(chimericReadIDict)
+    splitReadProfiles=getSplitEdgeOverlapProfiles(splitReadPositions,mergedClusterEdges)
+
+    usefulSplitReadProfiles=set()
+    for profile in splitReadProfiles:
+        if len(profile)>=2:
+            usefulSplitReadProfiles.add(profile)
+
+    mergedSplitReadProfiles=mergeClusterEdges(usefulSplitReadProfiles)
+
+    newChimericDict=keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClusterEdges)
+
+    cleanAllReadIDict={}
+    cleanAllReadIDict.update(readIDict)
+    cleanAllReadIDict.update(newChimericDict)
+
+    cleanAllClusters,cleanFullClusters=clusterInterlockChimera(minOvl,cleanAllReadIDict,maxID,minLen,minSim,contextDepths)
+
+    #############
+    #OUTPUT CODE#
+    #############
+
+    visDataTextFull=giveMeFullData(cleanAllClusters,referenceDict)
+    visDataFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_visDataFull.tsv","w")
+    visDataFile.write(visDataTextFull)
+    visDataFile.close()
+
+    #Create sets of fastQ read names, to be turned into FASTQ files by another script
+
+    st=len(strainName)
+
+    clusterReadText=""
+
+    for clusterName, clusterInfo in cleanFullClusters.items():
+        for readName in clusterInfo["names"]:
+            readName=readName.replace("chimeric-","")
+            readName=readName[:st+1]+readName[st+1:].split("_")[0]
+            clusterReadText+="\t".join([clusterName,readName])+"\n"
+
+    clusterReadFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_clusterReadNames.tsv","w")
+    clusterReadFile.write(clusterReadText)
+    clusterReadFile.close()
+
+    #A tab separated file that shows you which SNPs were predicted to be in the same haplotigs
+
+    phasedSNPText=""
+
+    for clusterName, clusterInfo in cleanFullClusters.items():
+        for SNP in clusterInfo["consensus"]:
+            chrom=SNP.split(":")[0]
+            pos=SNP.split(":")[1].split("=")[0]
+            base=SNP.split("=")[1]
+            phasedSNPText+="\t".join([clusterName,chrom,pos,base])+"\n"
+
+    phasedSNPFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_variants.tsv","w")
+    phasedSNPFile.write(phasedSNPText)
+    phasedSNPFile.close()
+
+    return "Phasing over"
+
+
+
 
