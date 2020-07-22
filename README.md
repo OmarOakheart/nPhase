@@ -1,7 +1,7 @@
 # nPhase
 Ploidy agnostic phasing pipeline and algorithm
 
-![Alt text](/nPhasePipeline.jpg?raw=true "nPhase Pipeline")
+![Alt text](/img/nPhasePipeline.jpg?raw=true "nPhase Pipeline")
 
 nPhase is a ploidy agnostic tool developed in python which predicts the haplotypes of a sample that was sequenced by both long and short reads by aligning them to a reference. It should work with any ploidy.
 
