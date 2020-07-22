@@ -3,6 +3,8 @@ Ploidy agnostic phasing pipeline and algorithm
 
 ![Alt text](/nPhasePipeline.jpg?raw=true "nPhase Pipeline")
 
+nPhase is a ploidy agnostic tool developed in python which predicts the haplotypes of a sample that was sequenced by both long and short reads by aligning them to a reference. It should work with any ploidy.
+
 # Quick-start
 
 If you have bioconda you can install nPhase by running the following commands in your terminal:
@@ -27,7 +29,7 @@ nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_refere
 
 ## With bioconda
 
-Install conda and set the correct channels by following the first two steps here: https://bioconda.github.io/user/install.html
+Install bioconda and set the correct channels by following the first two steps here: https://bioconda.github.io/user/install.html
 
 Then you can create a new environment and install nPhase with the following commands:
 ```
@@ -36,7 +38,7 @@ conda activate nPhasePipeline
 conda install -c oakheart nphase
 ```
 
-## Without conda
+## Without bioconda
 
 ### Pre-requisites
 
@@ -117,6 +119,24 @@ optional arguments:
 
 ```
 
+# Paper
+
+Coming soon...
+
+# Lightning talk describing nPhase [5:44]
+
+https://drive.google.com/file/d/16quLufiNhICXqmAAGRYEIy1MivWVMXVI/view?usp=sharing
+
+# Misc
+
+Current recommendations for default parameters are at least 20X coverage per haplotype (so 60X for a triploid) and a heterozygosity level of at least 0.4% (average of 1 heterozygous SNP every 250 bp).
+
+It is currently untested on pacbio data so if you have a pacbio dataset (with a known ground truth) please contact me (raise an issue on github or email me), especially if you have errors.
+
+If you have a hybrid sample that has an acquired genomic copy which is genetically distant from the rest of the genome, nPhase will struggle to predict accurate results as the "distant" haplotype will make the other haplotypes look incredibly similar to each other. The solution is to separate the long reads based on their genetic distance to a reference genome. More details in this google slides link: https://docs.google.com/presentation/d/1LCvfwa214RK4ycm9ga8aa8MKzwQZJyvwa3MLP1iAJBA/edit?usp=sharing
 
 
+# Contact me
 
+email: oabousaada@unistra.fr
+discord: Peaceful#6956
