@@ -139,7 +139,7 @@ Current recommendations for default parameters are at least 20X coverage per hap
 
 It is currently untested on pacbio data so if you have a pacbio dataset (with a known ground truth) please contact me (raise an issue on github or email me), especially if you have errors.
 
-If you have a hybrid sample that has an acquired genomic copy which is genetically distant from the rest of the genome, nPhase will struggle to predict accurate results as the "distant" haplotype will make the other haplotypes look incredibly similar to each other. The solution is to separate the long reads based on their genetic distance to a reference genome. More details in this google slides [link](https://docs.google.com/presentation/d/1LCvfwa214RK4ycm9ga8aa8MKzwQZJyvwa3MLP1iAJBA/edit?usp=sharing)
+If you have a hybrid sample that has an acquired genomic copy which is genetically distant from the rest of the genome, nPhase will struggle to predict accurate results as the "distant" haplotype will make the other haplotypes look incredibly similar to each other. The solution is to separate the long reads based on their genetic distance to a reference genome. More details in this [PDF file](/files/HybridPolyploidConsiderations.pdf).
 
 
 ### Contact me
