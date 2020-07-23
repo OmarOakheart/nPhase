@@ -33,7 +33,7 @@ Install bioconda and set the correct channels by following the first two steps h
 
 Then you can create a new environment and install nPhase with the following commands:
 ```
-conda create -n nPhasePipeline python=3.8 nPhase  
+conda create -n nPhasePipeline python=3.8  
 conda activate nPhasePipeline  
 conda install -c oakheart nphase
 ```
