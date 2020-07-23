@@ -123,11 +123,11 @@ optional arguments:
 
 ```
 
-# Paper
+### Paper
 
 Coming soon...
 
-# How to cite
+### How to cite
 
 Coming soon...
 
