@@ -3,7 +3,7 @@ import sys
 import os
 import subprocess
 import bin.nPhasePipelineFunctions as nPhaseFunctions
-import bin.nPhase as nPhaseAlgorithm
+import bin.nPhase as phaseTool
 
 def updateLog(logFilePath,logText):
     logFile=open(logFilePath,"a")
@@ -166,7 +166,7 @@ def nPhasePipeline(args):
     nPhaseFunctions.longReadValidation(longReadPositionNTFile,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile)
 
     #Run everything through nPhase
-    nPhaseAlgorithm.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
@@ -220,7 +220,7 @@ def nPhaseAlgorithm(args):
     fullLogPath=os.path.join(basePath,"Logs","fullLog.txt")
 
     #Run everything through nPhase
-    nPhaseAlgorithm.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
