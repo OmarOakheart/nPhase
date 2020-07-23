@@ -52,9 +52,11 @@ You will have to install the following software before nPhase:
 
 [GATK 4.0](https://github.com/broadinstitute/gatk)
 
-[samtools v1.9](https://github.com/samtools/samtools/tree/1.9)
+[samtools v1.9](https://github.com/samtools/samtools/tree/1.9)*
 
 [ngmlr](https://github.com/philres/ngmlr)
+
+* Currently, installing samtools v1.10 or higher will cause an error to occur due to [a bug in the way ngmlr handles MAPQ scores](https://github.com/philres/ngmlr/issues/83).
 
 ### Installation via PyPI
 
