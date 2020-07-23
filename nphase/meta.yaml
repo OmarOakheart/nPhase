@@ -39,7 +39,7 @@ about:
   home: "https://https://github.com/nPhasePipeline/nPhase"
   license: "GNU General Public v3 (GPLv3)"
   license_family: GPL3
-  license_file: https://github.com/nPhasePipeline/nPhase/blob/master/LICENSE
+  license_file:
   summary: "nPhase is a command line ploidy agnostic phasing pipeline and algorithm which phases samples of any ploidy with sequence alignment of long and short read data to a reference sequence."
   doc_url: https://github.com/nPhasePipeline/nPhase/blob/master/README.md
   dev_url: https://github.com/nPhasePipeline/nPhase
