@@ -1,0 +1,49 @@
+{% set name = "nPhase" %}
+{% set version = "1.0.6" %}
+
+package:
+  name: "{{ name|lower }}"
+  version: "{{ version }}"
+
+source:
+  url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
+  sha256: cd11c1743b25e96cba92bfd98866b46a7da8ebc27450d0ab384b4f9e4e626c67
+
+build:
+  number: 0
+  entry_points:
+    - nphase = bin.nPhasePipeline:main
+  script: "{{ PYTHON }} -m pip install . -vv"
+
+requirements:
+  host:
+    - pip
+    - plotnine
+    - python >=3.8
+    - sortedcontainers
+  run:
+    - plotnine
+    - python >=3.8
+    - sortedcontainers
+    - samtools==1.9
+    - ngmlr
+    - gatk4
+    - bwa
+
+test:
+  imports:
+    - bin
+  commands:
+    - nphase --help
+about:
+  home: "https://https://github.com/nPhasePipeline/nPhase"
+  license: "GNU General Public v3 (GPLv3)"
+  license_family: GPL3
+  license_file: https://github.com/nPhasePipeline/nPhase/blob/master/LICENSE
+  summary: "nPhase is a command line ploidy agnostic phasing pipeline and algorithm which phases samples of any ploidy with sequence alignment of long and short read data to a reference sequence."
+  doc_url: https://github.com/nPhasePipeline/nPhase/blob/master/README.md
+  dev_url: https://github.com/nPhasePipeline/nPhase
+
+extra:
+  recipe-maintainers:
+    - https://github.com/nPhasePipeline/nPhase
