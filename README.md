@@ -56,7 +56,7 @@ You will have to install the following software before nPhase:
 
 [ngmlr](https://github.com/philres/ngmlr)
 
-* Currently, installing samtools v1.10 or higher will cause an error to occur due to [a bug in the way ngmlr handles MAPQ scores](https://github.com/philres/ngmlr/issues/83).
+\*Currently, installing samtools v1.10 or higher will cause an error to occur due to [a bug in the way ngmlr handles MAPQ scores](https://github.com/philres/ngmlr/issues/83).
 
 ### Installation via PyPI
 
