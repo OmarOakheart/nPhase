@@ -12,9 +12,8 @@ nPhase is a ploidy agnostic tool developed in python which predicts the haplotyp
 If you have bioconda you can install nPhase by running the following commands in your terminal:
 
 ```
-conda create -n nPhasePipeline python=3.8
-conda activate nPhasePipeline  
-conda install -c oakheart nphase
+conda create -n polyploidPhasing python=3.8 -c oakheart nphase
+conda activate nPhasePipeline
 ```
 
 Then you can phase your data with the following command:
@@ -35,9 +34,8 @@ Install bioconda and set the correct channels by following the first two steps h
 
 Then you can create a new environment and install nPhase with the following commands:
 ```
-conda create -n nPhasePipeline python=3.8  
-conda activate nPhasePipeline  
-conda install -c oakheart nphase
+conda create -n polyploidPhasing python=3.8 -c oakheart nphase
+conda activate nPhasePipeline
 ```
 
 ## Without bioconda
