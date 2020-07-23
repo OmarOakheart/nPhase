@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="nPhase",
-    version="1.0.5",
+    version="1.0.6",
     author="Omar Abou Saada",
     author_email="oabousaada@unistra.fr",
     description="nPhase is a command line ploidy agnostic phasing pipeline and algorithm which phases samples of any ploidy with sequence alignment of long and short read data to a reference sequence.",
