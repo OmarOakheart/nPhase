@@ -477,8 +477,9 @@ def simplifyDataVis(dataVisPath,simpleOutPath,distance):
     outFile.close()
 
 def generateDataVis(dataVisPath,outPath):
-    outputPNG=outputSVG=outPath+"dataVis.png"
-    outputPDF=outputSVG=outPath+"dataVis.pdf"
+    outputPNG=outPath+"dataVis.png"
+    outputPDF=outPath+"dataVis.pdf"
+    outputSVG=outPath+"dataVis.svg"
 
     tbl = pd.read_csv(dataVisPath, sep="\t", header=None)
     tbl.columns = ["contigName", "startPos", "endPos", "chr", "yValue"]
