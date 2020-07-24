@@ -125,11 +125,8 @@ optional arguments:
 
 ### Paper
 
-Coming soon...
+[nPhase: An accurate and contiguous phasing method for polyploids](https://www.biorxiv.org/content/10.1101/2020.07.24.219105v1)
 
-### How to cite
-
-Coming soon...
 
 ### Media
 
