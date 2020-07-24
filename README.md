@@ -137,7 +137,7 @@ Online lightning talk I gave about nPhase for an Oxford Nanopore event [5:44]: [
 
 ### Misc
 
-Current recommendations for default parameters are at least 20X coverage per haplotype (so 60X for a triploid) and a heterozygosity level of at least 0.4% (average of 1 heterozygous SNP every 250 bp).
+Current recommendations for default parameters are at least 20X coverage per haplotype (so 3\*20=60X for a triploid) and a heterozygosity level of at least 0.4% (average of 1 heterozygous SNP every 250 bp).
 
 It is currently untested on pacbio data so if you have a pacbio dataset (with a known ground truth) please contact me (raise an issue on github or email me), especially if you have errors.
 
