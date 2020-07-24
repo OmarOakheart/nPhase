@@ -13,7 +13,7 @@ If you have bioconda you can install nPhase by running the following commands in
 
 ```
 conda create -n polyploidPhasing python=3.8
-conda activate nPhasePipeline
+conda activate polyploidPhasing
 conda install -c oakheart nphase
 ```
 
@@ -36,7 +36,7 @@ Install bioconda and set the correct channels by following the first two steps h
 Then you can create a new environment and install nPhase with the following commands:
 ```
 conda create -n polyploidPhasing python=3.8
-conda activate nPhasePipeline
+conda activate polyploidPhasing
 conda install -c oakheart nphase
 ```
 
