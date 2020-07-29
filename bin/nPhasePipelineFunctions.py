@@ -231,11 +231,11 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
         matchStart=False
         averageScore=0
         for Q in QLine:
-	    try:
+            try:
                 averageScore+=QScores[Q]
-	    except:
-		QScores[Q]=ord(Q)-33
-		averageScore+=QScores[Q]
+            except:
+                QScores[Q]=ord(Q)-33
+                averageScore+=QScores[Q]
         averageScore=int(averageScore/len(QLine))
         #
         #Okay so now we evaluate the cigar string and just slide down the SEQ and the reference simultaneously
