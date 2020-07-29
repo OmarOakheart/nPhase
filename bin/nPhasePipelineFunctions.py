@@ -151,7 +151,7 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
     #https://davetang.org/wiki/tiki-index.php?page=SAM
 
     #QScores
-    #https://drive5.com/usearch/manual/quality_score.html
+    #https://medium.com/@robertopreste/phred-quality-score-2837415f0af
 
     #To consider:
     #Currently, softclips, insertions and padding worsen the alignment score, you might want to change that
@@ -162,7 +162,9 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
 
     #P = 10-Q/10
 
-    QScores={"!":0,'"':1,"#":2,"$":3,"%":4,"&":5,"'":6,"(":7,")":8,"*":9,"+":10,",":11,"-":12,".":13,"/":14,"0":15,"1":16,"2":17,"3":18,"4":19,"5":20,"6":21,"7":22,"8":23,"9":24,":":25,";":26,"<":27,"=":28,">":29,"?":30,"@":31,"A":32,"B":33,"C":34,"D":35,"E":36,"F":37,"G":38,"H":39,"I":40,"J":41,"K":42} #Looks like the score is never 0 and that it's never over 30
+    QScores={}
+    for i in range(0,200):
+        QScores[chr(33+i)]=i
 
     PScores={}
 
@@ -227,7 +229,11 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
         matchStart=False
         averageScore=0
         for Q in QLine:
-            averageScore+=QScores[Q]
+	    try:
+                averageScore+=QScores[Q]
+	    except:
+		QScores[Q]=ord(Q)-33
+		averageScore+=QScores[Q]
         averageScore=int(averageScore/len(QLine))
         #
         #Okay so now we evaluate the cigar string and just slide down the SEQ and the reference simultaneously
