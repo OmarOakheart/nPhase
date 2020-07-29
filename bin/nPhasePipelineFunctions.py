@@ -48,7 +48,7 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
     outputLog=""
     #Mapping
     samFile=os.path.join(outputFolder, strainName+".sam")
-    RGline="@RG\\tID:ID_${strainName}\\tLB:LB_"+strainName+"\\tPL:ILLUMINA\\tPU:PU_"+strainName+"\\tSM:SM_"+strainName
+    RGline="@RG\\tID:ID_"+strainName+"\\tLB:LB_"+strainName+"\\tPL:ILLUMINA\\tPU:PU_"+strainName+"\\tSM:SM_"+strainName
     p=subprocess.run(["bwa","mem","-M","-R", RGline, reference, R1, R2, "-o", samFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["bwa","mem","-M","-R", RGline, reference, R1, R2, "-o", samFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
@@ -94,12 +94,14 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
-
-    #Cleaning up
-    os.remove(samFile)
-    os.remove(bamFile)
-    os.remove(sortedBamFile)
-    os.remove(MDsortedBamFile)
+    try:
+        #Cleaning up
+        os.remove(samFile)
+        os.remove(bamFile)
+        os.remove(sortedBamFile)
+        os.remove(MDsortedBamFile)
+    except:
+        return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
 
     return outputLog,"Short reads successfully mapped to reference"
 
