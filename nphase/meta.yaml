@@ -1,5 +1,5 @@
 {% set name = "nPhase" %}
-{% set version = "1.0.6" %}
+{% set version = "1.0.9" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: cd11c1743b25e96cba92bfd98866b46a7da8ebc27450d0ab384b4f9e4e626c67
+  sha256: b2d8515e23e3538eebe4cdecfaa94638551119689399862164b89834e5d0cc4c
 
 build:
   number: 0
@@ -35,6 +35,7 @@ test:
     - bin
   commands:
     - nphase --help
+
 about:
   home: "https://https://github.com/nPhasePipeline/nPhase"
   license: "GNU General Public v3 (GPLv3)"

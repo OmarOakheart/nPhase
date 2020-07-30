@@ -37,10 +37,13 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
-    #Cleaning up
-    os.remove(samFile)
-    os.remove(passSamFile)
-    os.remove(sortedHeaderSamFile)
+    try:
+        #Cleaning up
+        os.remove(samFile)
+        os.remove(passSamFile)
+        os.remove(sortedHeaderSamFile)
+    except:
+        return outputLog,"Long reads not mapped to reference"
 
     return outputLog,"Long reads successfully mapped to reference"
 
@@ -64,7 +67,7 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
     outputLog+="COMMAND: "+" ".join(["samtools","view","-bT",reference,"-q","1",samFile,"-o",bamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    
+
     p=subprocess.run(["samtools", "sort", bamFile, "-o", sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools", "sort", bamFile, "-o", sortedBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
@@ -125,7 +128,7 @@ def getShortReadPositions(hetVCFName,shortReadPosFileName):
                     pass
                 elif len(alt)<len(ref): #DEL
                     #for curPos in range(int(line[1])+1,int(line[1])+len(ref)):
-                    #	hetVCFPositions.add(chr+":"+str(curPos))
+                    #   hetVCFPositions.add(chr+":"+str(curPos))
                     pass
 
     #Writing the short read het positions to a file
@@ -206,8 +209,8 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
             b=False
             while b==False:
                 if line[0]+"_"+str(i) not in readDict:
-                    readDict[line[0]+"_"+str(i)]=[]
-                    line[0]=line[0]+"_"+str(i)
+                    readDict[line[0]+"_VCSTTP_"+str(i)]=[] #Very Clean Solution To This Problem
+                    line[0]=line[0]+"_VCSTTP_"+str(i)
                     b=True
                 i+=1
 
@@ -360,7 +363,7 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
     #vvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvvv#
     ###########################################################################################
 
-    #Only keeping long reads that have unique combinations of SNPs 
+    #Only keeping long reads that have unique combinations of SNPs
     uniqueLongReadSets=set()
     uniqueLongReadIDs=set()
 
@@ -412,7 +415,7 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     haplotigReadNameFile.close()
 
     gzipBool=True
-    
+
     longReadData={}
 
     with gzip.open(longReadFastQFilePath, 'r') as fh:
@@ -444,13 +447,13 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     return "Successfully generated phased FastQ files"
 
 def loadFile(filePath):
-	openFile=open(filePath,"r")
-	fileContents=[]
-	for line in openFile:
-		line=line.strip("\n").split("\t")
-		fileContents.append(line)
-	openFile.close()
-	return fileContents
+        openFile=open(filePath,"r")
+        fileContents=[]
+        for line in openFile:
+                line=line.strip("\n").split("\t")
+                fileContents.append(line)
+        openFile.close()
+        return fileContents
 
 def simplifyDataVis(dataVisPath,simpleOutPath,distance):
     fileContents=loadFile(dataVisPath)
@@ -493,7 +496,7 @@ def generateDataVis(dataVisPath,outPath):
     tbl.columns = ["contigName", "startPos", "endPos", "chr", "yValue"]
 
     #g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
-    
+
     g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
 
     ggsave(g,filename=outputSVG,width=18, height=10)

@@ -348,7 +348,7 @@ def keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClus
                 chrmSNPs[position.split(":")[0]][position]=info
             i=0
             for chrm, posInfo in chrmSNPs.items():
-                usefulSplitReads[splitRead+"_"+str(i)]=posInfo
+                usefulSplitReads[splitRead+"_VCSTTP_"+str(i)]=posInfo
                 i+=1
     return usefulSplitReads
 
@@ -459,17 +459,17 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     chimericNames=set()
 
     for readName, sequence in SNPAssignments.items():
-        if len(readName[len(strainName)+1:].split("_"))>1:
-            chimericNames.add("_".join(readName.split("_")[:-1]))
+        if len(readName.split("_VCSTTP_"))>1:
+            chimericNames.add(readName.split("_VCSTTP_")[0])
 
     print("Split reads identified.")
 
     #Applying the context depth info to all of the reads
     chimericReadIDict={}
     for readName, sequence in SNPAssignments.items():
-        if len(readName[len(strainName)+1:].split("_"))>1 or readName in chimericNames:
-            if len(readName[len(strainName)+1:].split("_"))>1:
-                readName="_".join(readName.split("_")[:-1])
+        if len(readName.split("_VCSTTP_"))>1 or readName in chimericNames:
+            if len(readName.split("_VCSTTP_"))>1:
+                readName="_VCSTTP_".join(readName.split("_VCSTTP_")[:-1])
             allBaseDict={}
             if len(sequence)>=10:
                 sequence=set(sequence)
@@ -528,6 +528,8 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
 
     newChimericDict=keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClusterEdges)
 
+    #print(newChimericDict["chimeric-CCN_ACA_BMB_0"])
+
     cleanAllReadIDict={}
     cleanAllReadIDict.update(readIDict)
     cleanAllReadIDict.update(newChimericDict)
@@ -545,14 +547,16 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
 
     #Create sets of fastQ read names, to be turned into FASTQ files by another script
 
-    st=len(strainName)
-
     clusterReadText=""
 
     for clusterName, clusterInfo in cleanFullClusters.items():
         for readName in clusterInfo["names"]:
+            x=readName
             readName=readName.replace("chimeric-","")
-            readName=readName[:st+1]+readName[st+1:].split("_")[0]
+            readPart=readName.split("_VCSTTP_")
+            if len(readPart)>1:
+                readPart=readPart[:-1]
+            readName="_VCSTTP_".join(readPart)
             clusterReadText+="\t".join([clusterName,readName])+"\n"
 
     clusterReadFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_clusterReadNames.tsv","w")
@@ -575,7 +579,5 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     phasedSNPFile.close()
 
     return "Phasing over"
-
-
 
 
