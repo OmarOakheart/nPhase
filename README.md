@@ -66,7 +66,7 @@ You can now install nPhase via
 
 # Usage
 
-There are two ways to run nPhase:
+There are two main ways to run nPhase:
 
 `nphase pipeline` will run the entire pipeline from start to finish and requires the following inputs:
 
@@ -84,6 +84,40 @@ nphase algorithm --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_
 ```
 
 Optional parameters are described further down.
+
+# nphase partial
+
+Alternatively, if you already mapped your short reads to a reference, or your long reads, or already variant called your mapped short reads, you can try to use
+
+`nphase partial` which will run only the parts of the pipeline that you need to run. So for example if you provide it with a vcf file, then it will only try to map the long reads. If you provide it with mapped short reads and mapped long reads, it will only variant call the short reads, etc. This is not recommended since I can't control what you input but it can save people time or allow for more creative uses of nPhase.
+
+Here are the use cases of `nphase partial`:
+
+You have mapped long reads and a vcf file of your short reads:
+```
+nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
+               --vcf VCF_FILE --mappedLongReads MAPPED_LONG_READ_FILE
+```
+You have mapped long reads and mapped short reads, but not vcf:
+```
+nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
+               --mappedLongReads MAPPED_LONG_READ_FILE --mappedShortReads MAPPED_SHORT_READ_FILE
+```
+You have mapped long reads, but no mapped short reads and no vcf:
+```
+nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
+               --mappedLongReads MAPPED_LONG_READ_FILE --R1 SHORT_READ_FILE_R1 --R2 SHORT_READ_FILE_R2
+```
+You have a short read vcf, but no mapped long reads:
+```
+nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
+               --vcf VCF_FILE --longReadPlatform {ont,pacbio}
+```
+You have mapped short reads, but no mapped long reads and no vcf:
+```
+nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
+               --mappedShortReads MAPPED_SHORT_READ_FILE --longReadPlatform {ont,pacbio}
+```
 
 # Parameters
 
@@ -124,6 +158,19 @@ additional arguments required by nphase algorithm:
   --processedLongReads VALIDATEDSNPASSIGNMENTSFILE
                         Path to validated long read SNPs, ex:
                         /home/phased/Individual_1/VariantCalls/longReads/Individual_1.hetPositions.SNPxLongReads.validated.tsv
+
+additional arguments potentially required by nphase partial:
+  --mappedShortReads MAPPEDSHORTREADS
+                        Path to mapped, sorted short read file in BAM format, ex: /home/phased/Individual_1/Mapped/shortReads/Individual_1.final.bam
+  --vcf VCFFILE         Path to VCF file (must be generated with GATK --ploidy=2), ex:/home/phased/Individual_1/VariantCalls/shortReads/Individual.vcf
+  --mappedLongReads MAPPEDLONGREADS
+                        Path to mapped long read file in SAM format and should be filtered to keep split reads (flag 260), ex: /home/phased/Individual_1/Mapped/longReads/Individual_1.sorted.sam
+  --longReadPlatform {ont,pacbio}
+                        Long read platform, must be 'ont' or 'pacbio'
+  --R1 SHORTREADFILE_R1
+                        Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz
+  --R2 SHORTREADFILE_R2
+                        Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz
 
 optional arguments:
   -h, --help            show this help message and exit
