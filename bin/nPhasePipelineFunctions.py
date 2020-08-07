@@ -427,7 +427,8 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     for line in longReadFastQFile:
         line=line.strip("\n")
         if i%4==0:
-            readName=line
+            line=line.split()
+            readName=line[0]
             longReadData[readName]=[]
         else:
             longReadData[readName].append(line)
