@@ -330,7 +330,7 @@ def partialPipeline(args):
         if args.mappedShortReads=="noMapped":
             shortReadBam=os.path.join(mappedShortReadPath,args.strainName+".final.bam")
         else:
-            shortReadBam==args.mappedShortReads
+            shortReadBam=args.mappedShortReads
         shortReadVCF=os.path.join(variantCalledShortReadPath,args.strainName+".vcf")
         p=subprocess.run(["gatk","HaplotypeCaller","-R",args.reference,"-ploidy",estimatedPloidy,"-I",shortReadBam,"-O",shortReadVCF],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
         logText="COMMAND: "+" ".join(["gatk","HaplotypeCaller","-R",args.reference,"-ploidy",estimatedPloidy,"-I",shortReadBam,"-O",shortReadVCF])+"\n\n"
