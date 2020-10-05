@@ -402,7 +402,19 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
 
     return "Pre-processed long reads and generated context depth file"
 
+def getAvgFastQScore(fastQScoreStr):
+    fastQScoreStr=fastQScoreStr.strip()
+    totalScore=0
+    QScores={}
+    for baseQ in fastQScoreStr:
+        if baseQ not in QScores:
+            QScores[baseQ]=ord(baseQ)-33
+        totalScore+=QScores[baseQ]
+    avgScore=totalScore/len(fastQScoreStr)
+    return avgScore
+
 def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,outputPath):
+    clusterStatsText=""
     haplotigReadDict={}
     haplotigReadNameFile=open(haplotigReadNameFilePath,"r")
     for line in haplotigReadNameFile:
@@ -414,15 +426,17 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
 
     haplotigReadNameFile.close()
 
-    gzipBool=True
-
     longReadData={}
+    longReadMetaData={}
 
-    with gzip.open(longReadFastQFilePath, 'r') as fh:
-        try:
-            longReadFastQFile=gzip.open(longReadFastQFilePath,"rt")
-        except gzip.BadGzipFile:
-            longReadFastQFile=open(longReadFastQFilePath,"r")
+    try:
+        longReadFastQFile=gzip.open(longReadFastQFilePath,"rt")
+        longReadFastQFile.readline()
+        longReadFastQFile.close()
+        longReadFastQFile=gzip.open(longReadFastQFilePath, "rt")
+    except gzip.BadGzipFile:
+        longReadFastQFile=open(longReadFastQFilePath,"r")
+
     i=0
     for line in longReadFastQFile:
         line=line.strip("\n")
@@ -431,19 +445,32 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
             readName=line[0]
             longReadData[readName]=[]
         else:
+            if i%4==3:
+                longReadMetaData[readName]=getAvgFastQScore(line)
             longReadData[readName].append(line)
         i+=1
     longReadFastQFile.close()
 
     for haplotigName, reads in haplotigReadDict.items():
         haplotigFastQText=""
+        totalScore=0
         for read in reads:
             read="@"+read
+            try:
+                totalScore+=longReadMetaData[read]
+            except:
+                read=read.split("_")[0]
+                totalScore+=longReadMetaData[read]
             readText=read+"\n"+"\n".join(longReadData[read])+"\n"
             haplotigFastQText+=readText
+        clusterStatsText+=haplotigName+"\t"+str(len(set(reads)))+"\t"+str(round(totalScore/len(reads)))+"\n"
         haplotigFile=gzip.open(outputPath+haplotigName+".fastq.gz",'wt')
         haplotigFile.write(haplotigFastQText)
         haplotigFile.close()
+
+    clusterStatsFile=open(outputPath+"clusterStats.tsv", 'w')
+    clusterStatsFile.write(clusterStatsText)
+    clusterStatsFile.close()
 
     return "Successfully generated phased FastQ files"
 
@@ -496,13 +523,12 @@ def generateDataVis(dataVisPath,outPath):
     tbl = pd.read_csv(dataVisPath, sep="\t", header=None)
     tbl.columns = ["contigName", "startPos", "endPos", "chr", "yValue"]
 
-    #g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+    g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
 
-    g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+    #g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
 
     ggsave(g,filename=outputSVG,width=18, height=10)
     ggsave(g,filename=outputPNG,width=18, height=10)
     ggsave(g,filename=outputPDF,width=18, height=10)
 
     return "Generated plots"
-
