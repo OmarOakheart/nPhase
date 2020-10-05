@@ -1,5 +1,5 @@
 {% set name = "nPhase" %}
-{% set version = "1.0.9" %}
+{% set version = "1.0.12" %}
 
 package:
   name: "{{ name|lower }}"
@@ -7,7 +7,7 @@ package:
 
 source:
   url: "https://pypi.io/packages/source/{{ name[0] }}/{{ name }}/{{ name }}-{{ version }}.tar.gz"
-  sha256: b2d8515e23e3538eebe4cdecfaa94638551119689399862164b89834e5d0cc4c
+  sha256: 052ec45fce7442876a2cda10f68dfca89daa9c63f52a4f4a03667a5b3548dbe5
 
 build:
   number: 0
