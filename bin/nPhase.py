@@ -1,4 +1,5 @@
 import operator
+import os
 from itertools import combinations
 import sys
 import sortedcontainers
@@ -240,11 +241,11 @@ def clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths):
             cachedSimilarities[newName]=newCache
             i+=1
     #This is where you get the results output, needs another shell script or a python script to do the rest
-    actualClusters=[]
+    actualClusters={}
     resultClusters={}
     for cacheName, cacheInfo in cachedSimilarities.items():
         if len(cacheInfo["names"])>minLen: #Only allow clusters with at least this many reads
-            actualClusters.append(cacheInfo["consensus"])
+            actualClusters[cacheName]=cacheInfo["consensus"]
             resultClusters[cacheName]=cacheInfo
     if len(actualClusters)>0:
         print(len(actualClusters),"clusters")
@@ -346,71 +347,264 @@ def keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClus
                 chrmSNPs[chrm]={}
             for position, info in newSplitReadInfo.items():
                 chrmSNPs[position.split(":")[0]][position]=info
-            i=0
             for chrm, posInfo in chrmSNPs.items():
-                usefulSplitReads[splitRead+"_VCSTTP_"+str(i)]=posInfo
-                i+=1
+                usefulSplitReads[splitRead]=posInfo
     return usefulSplitReads
 
-def giveMeFullData(clusters,refTable):
+def giveMeFullData(clusters):
     clusterText=""
     sortedClusterLines=sortedcontainers.SortedList()
-    clusterFirst={}
     clusterLines=[]
+    for clusterName, cluster in clusters.items():
+        for SNP in cluster:
+            contig=SNP.split(":")[0]
+            position=int(SNP.split(":")[1].split("=")[0])
+            sortedClusterLines.add([position,clusterName,contig])
     i=1
-    for cluster in clusters:
-        clusterName="haplotig_"+str(i)
-        contigs=set()
-        for SNP in cluster:
-            contigs.add(SNP.split(":")[0])
-        contigSeparated={}
-        for contig in contigs:
-            contigSeparated[contig]=set()
-        for SNP in cluster:
-            SNPContig=SNP.split(":")[0]
-            contigSeparated[SNPContig].add(SNP.split(":")[1].split("=")[0])
-        for contig,positions in contigSeparated.items():
-            for position in positions:
-                sortedClusterLines.add([int(position)+refTable[contig]["startPosition"],clusterName,contig])
-        i+=1
+    previouslySeen={sortedClusterLines[0][1]:i}
     for line in sortedClusterLines:
-        if line[1] not in clusterFirst:
-            clusterFirst[line[1]]="haplotig_"+str(len(clusterFirst)+1)
-    for line in sortedClusterLines:
-        clusterLines.append([clusterFirst[line[1]],line[0],line[2],clusterFirst[line[1]].split("_")[1]])
+        if line[1] not in previouslySeen:
+            i+=1
+            previouslySeen[line[1]]=i
+        clusterLines.append([line[1],line[0],line[2],previouslySeen[line[1]]])
     for line in clusterLines:
         clusterText+="\t".join([str(x) for x in line])+"\n"
     return clusterText
 
-def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,referenceFilePath,minSim,minOvl,minLen,maxID):
+def generateCoverage(clusterFilePath,readFilePath,outPath,windowSize):
+    #Figure out how covered each read position is in each cluster
+
+    totalCoverage=0
+    uniquePositions=set()
+
+    clusterDict={}
+
+    clusterFile=open(clusterFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={}
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={}
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                uniquePositions.add(SNP.split("=")[0])
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]=0
+                rawDict[cluster][chr][position]+=1
+                totalCoverage+=1
+
+    cleanFullText=""
+
+    betterClusters={}
+
+    for cluster,chrs in rawDict.items():
+        betterClusters[cluster]={}
+        for chr,positions in rawDict[cluster].items():
+            betterClusters[cluster][chr]=[]
+            for pos in positions:
+                cov=str(rawDict[cluster][chr][pos])
+                if chr not in betterClusters[cluster].keys():
+                    betterClusters[cluster][chr]=[]
+                betterClusters[cluster][chr].append((int(pos),int(cov)))
+            sortedPositions=betterClusters[cluster][chr]
+            sortedPositions.sort()
+            betterClusters[cluster][chr]=sortedPositions
+
+    windowDict={}
+
+    for cluster,chrs in betterClusters.items():
+        windowDict[cluster]={}
+        for chr in chrs.keys():
+            if chr not in windowDict[cluster]:
+                windowDict[cluster][chr]={}
+            sortedPositions=betterClusters[cluster][chr]
+            sortedPositions.sort()
+            minPos=0
+            maxPos=int(sortedPositions[-1][0])+windowSize
+            for i in range(minPos,maxPos,windowSize):
+                window=[]
+                for position in sortedPositions:
+                    if int(position[0])>=i and int(position[0])<i+windowSize:
+                        window.append(int(position[1]))
+                if len(window)==0:
+                    mean="NA"
+                else:
+                    mean=sum(window)/len(window)
+                    if mean==0:
+                        mean="NA"
+                windowDict[cluster][chr][i+(windowSize/2)]=str(mean)
+
+    cleanFullText=""
+
+    for cluster,chrs in windowDict.items():
+        for chr,positions in chrs.items():
+            for pos,cov in positions.items():
+                cleanFullText+=cluster+"\t"+chr+"\t"+str(pos)+"\t"+str(cov)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    minCov=int(0.05*(totalCoverage/len(uniquePositions)))
+
+    return minCov
+
+def generateDiscordance(clusterReadFilePath,readFilePath,outPath):
+    #Figure out how supported (as a %) each base is for each position in the cluster
+
+    #Identify warnings/sort by how bad & output a text file
+
+    #Output a plot
+    clusterDict={} #All reads associated with clusters
+
+    clusterFile=open(clusterReadFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={} #All SNPs associated with reads
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={} #All SNPs within clusters based on the reads involved
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                base=SNP.split("=")[1]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]={}
+                if base not in rawDict[cluster][chr][position]:
+                    rawDict[cluster][chr][position][base]=0
+                rawDict[cluster][chr][position][base]+=1 #Count the number for each base
+
+    allFrequencies=[]
+
+    for cluster,chrs in rawDict.items():
+        for chr,positions in chrs.items():
+            for position, bases in positions.items():
+                baseCovs=bases.values()
+                totalCov=sum(baseCovs)
+                for base, coverage in bases.items():
+                    allFrequencies.append((cluster,chr,position,base,str(coverage/totalCov),str(totalCov)))
+
+    cleanFullText="#cluster\tchr\tposition\tbase\tfrequency\tcoverage\n"
+
+    for freq in allFrequencies:
+        cleanFullText+="\t".join(freq)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    pass
+
+def filterCoverage(clusterReadFilePath,readFilePath,outPath,minCov):
+    #Filter out how based on coverage
+
+    clusterDict={} #All reads associated with clusters
+
+    clusterFile=open(clusterReadFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={} #All SNPs associated with reads
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={} #All SNPs within clusters based on the reads involved
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                base=SNP.split("=")[1]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]=0
+                rawDict[cluster][chr][position]+=1 #Count the number for each base
+
+    allFrequencies=[]
+
+    for cluster,chrs in rawDict.items():
+        for chr,positions in chrs.items():
+            for position, coverage in positions.items():
+                if coverage>minCov:
+                    allFrequencies.append((cluster,chr,position,str(coverage)))
+
+    cleanFullText="#cluster\tchr\tcoverage\tposition\n"
+
+    for freq in allFrequencies:
+        cleanFullText+="\t".join(freq)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    pass
+
+def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mainFolder,referenceFilePath,minSim,minOvl,minLen,maxID):
 
     #Loading files
-
-    #Getting reference info
-    print("Loading reference file.")
-
-    referenceDict={}
-
-    referenceFile=open(referenceFilePath,"r")
-
-    for line in referenceFile:
-        line=line.strip("\n")
-        if line[0]==">":
-            contigName=line[1:].replace(" ","")
-            referenceDict[contigName]={"sequence":"","length":0}
-        else:
-            referenceDict[contigName]["sequence"]+=line
-            referenceDict[contigName]["length"]+=len(line)
-
-    referenceFile.close()
-
-    previousLength=0
-
-    for k,v in referenceDict.items():
-        referenceDict[k]["startPosition"]=previousLength
-        previousLength=v["length"]+previousLength
-
-    print("Reference file loaded.")
 
     print("Loading reads.")
 
@@ -455,12 +649,17 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
 
     print("Context depth loaded")
 
+    #This dict will keep track of split reads that we're about to merge
+    splitTrackingDict={}
+
     #Getting chimeric read names
     chimericNames=set()
 
     for readName, sequence in SNPAssignments.items():
         if len(readName.split("_VCSTTP_"))>1:
-            chimericNames.add(readName.split("_VCSTTP_")[0])
+            baseName=readName.split("_VCSTTP_")[0]
+            chimericNames.add(baseName)
+            splitTrackingDict[baseName]={}
 
     print("Split reads identified.")
 
@@ -469,12 +668,18 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     for readName, sequence in SNPAssignments.items():
         if len(readName.split("_VCSTTP_"))>1 or readName in chimericNames:
             if len(readName.split("_VCSTTP_"))>1:
-                readName="_VCSTTP_".join(readName.split("_VCSTTP_")[:-1])
+                baseName=readName.split("_VCSTTP_")[0]
+            if readName in chimericNames:
+                baseName=readName
             allBaseDict={}
             if len(sequence)>=10:
                 sequence=set(sequence)
                 positions=[]
                 for base in sequence:
+                    chr=base.split(":")[0]
+                    if chr not in splitTrackingDict[baseName].keys():
+                        splitTrackingDict[baseName][chr]=set()
+                    splitTrackingDict[baseName][chr].add(readName)
                     base=base.split("=")
                     positions.append(base[0])
                     allBaseDict.setdefault(base[0],{"demo":{base[1]:0},"stats":{"total":0,"N":0}}).update({"demo":{base[1]:0}})
@@ -486,7 +691,7 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
                 for basePos, bases in allBaseDict.items():
                     for base in allBaseDict[basePos]["demo"].keys():
                         allBaseDict[basePos]["demo"][base]=allBaseDict[basePos]["demo"][base]/allBaseDict[basePos]["stats"]["total"]
-                chimericReadIDict.setdefault("chimeric-"+readName,{}).update(allBaseDict)
+                chimericReadIDict.setdefault("chimeric-"+baseName,{}).update(allBaseDict)
 
     print("Split reads processed.")
 
@@ -511,6 +716,7 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     print("All reads processed.")
 
     baseClusters,fullClusters=clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths)
+    baseClusters=baseClusters.values()
 
     baseClusterEdges=getBaseClusterEdges(100,baseClusters)
 
@@ -540,8 +746,9 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     #OUTPUT CODE#
     #############
 
-    visDataTextFull=giveMeFullData(cleanAllClusters,referenceDict)
-    visDataFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_visDataFull.tsv","w")
+    visDataTextFull=giveMeFullData(cleanAllClusters)
+    visDataFilePath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_phasedDataFull.tsv")
+    visDataFile=open(visDataFilePath,"w")
     visDataFile.write(visDataTextFull)
     visDataFile.close()
 
@@ -550,16 +757,23 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
     clusterReadText=""
 
     for clusterName, clusterInfo in cleanFullClusters.items():
+        chrms=set()
+        for SNP in clusterInfo["consensus"]:
+            chrms.add(SNP.split(":")[0])
+        if len(chrms)>2:
+            print("MULTI-CHROMOSOME CLUSTER ERROR",chrms)
+            exit(1)
         for readName in clusterInfo["names"]:
-            x=readName
             readName=readName.replace("chimeric-","")
-            readPart=readName.split("_VCSTTP_")
-            if len(readPart)>1:
-                readPart=readPart[:-1]
-            readName="_VCSTTP_".join(readPart)
-            clusterReadText+="\t".join([clusterName,readName])+"\n"
+            if readName in splitTrackingDict:
+                splitReads=splitTrackingDict[readName][list(chrms)[0]]
+                for splitRead in splitReads:
+                    clusterReadText+="\t".join([clusterName,splitRead])+"\n"
+            else:
+                clusterReadText+="\t".join([clusterName,readName])+"\n"
 
-    clusterReadFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_clusterReadNames.tsv","w")
+    clusterReadFilePath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_clusterReadNames.tsv")
+    clusterReadFile=open(clusterReadFilePath,"w")
     clusterReadFile.write(clusterReadText)
     clusterReadFile.close()
 
@@ -574,9 +788,24 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,ref
             base=SNP.split("=")[1]
             phasedSNPText+="\t".join([clusterName,chrom,pos,base])+"\n"
 
-    phasedSNPFile=open(outFolder+"/"+strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_variants.tsv","w")
+    phasedSNPFilePath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_variants.tsv")
+    phasedSNPFile=open(phasedSNPFilePath,"w")
     phasedSNPFile.write(phasedSNPText)
     phasedSNPFile.close()
+
+    #A tab separated file showing the coverage for each haplotig
+
+    readFilePath=os.path.join(mainFolder,"VariantCalls","longReads",strainName+".hetPositions.SNPxLongReads.validated.tsv")
+    outPath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_covVis.tsv")
+    windowSize=10000
+    minCov=generateCoverage(clusterReadFilePath,readFilePath,outPath,windowSize)
+
+    outPath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_discordanceVis.tsv")
+    windowSize=10000
+    generateDiscordance(clusterReadFilePath,readFilePath,outPath)
+
+    outPath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_minCov="+str(minCov)+"_filterVis.tsv")
+    filterCoverage(clusterReadFilePath,readFilePath,outPath,minCov)
 
     return "Phasing over"
 
