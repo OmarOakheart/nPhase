@@ -203,5 +203,4 @@ If you have a hybrid sample that has an acquired genomic copy which is genetical
 
 ### Contact me
 
-email: oabousaada@unistra.fr  
-discord: Peaceful#6956
+email: oabousaada@unistra.fr
