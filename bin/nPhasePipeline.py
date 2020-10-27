@@ -166,20 +166,28 @@ def nPhasePipeline(args):
     nPhaseFunctions.longReadValidation(longReadPositionNTFile,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile)
 
     #Run everything through nPhase
-    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
     updateLog(readmePath,readmeText)
 
     #Simplify datavis
-    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataFull.tsv")
-    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataSimple.tsv")
+    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataFull.tsv")
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataSimple.tsv")
     nPhaseFunctions.simplifyDataVis(dataVisPath,simpleOutPath,1000)
 
     #Generate plots
     datavisPath=os.path.join(datavisFolderPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
-    nPhaseFunctions.generateDataVis(simpleOutPath,datavisPath)
+    nPhaseFunctions.generatePhasingVis(simpleOutPath,datavisPath)
+
+    #Coverage
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_covVis.tsv")
+    nPhaseFunctions.generateCoverageVis(simpleOutPath,datavisPath)
+
+    #Discordance
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
+    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
@@ -220,20 +228,28 @@ def nPhaseAlgorithm(args):
     fullLogPath=os.path.join(basePath,"Logs","fullLog.txt")
 
     #Run everything through nPhase
-    phaseTool.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
     updateLog(readmePath,readmeText)
 
     #Simplify datavis
-    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataFull.tsv")
-    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataSimple.tsv")
+    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataFull.tsv")
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataSimple.tsv")
     nPhaseFunctions.simplifyDataVis(dataVisPath,simpleOutPath,1000)
 
     #Generate plots
     datavisPath=os.path.join(datavisFolderPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
-    nPhaseFunctions.generateDataVis(simpleOutPath,datavisPath)
+    nPhaseFunctions.generatePhasingVis(simpleOutPath,datavisPath)
+
+    #Coverage
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_covVis.tsv")
+    nPhaseFunctions.generateCoverageVis(simpleOutPath,datavisPath)
+
+    #Discordance
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
+    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
@@ -243,7 +259,7 @@ def nPhaseAlgorithm(args):
     haplotigReadNameFile=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_clusterReadNames.tsv")
     fastQFilePrefix=os.path.join(phasedFastqPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
 
-    nPhaseFunctions.generateLongReadFastQFiles(haplotigReadNameFile,args.longReadFile,fastQFilePrefix)#Needs to work more efficiently, shouldn't just load the entire fastq into memory...right? (why not?) Do I do that at any other point? #Make this last just in case.
+    nPhaseFunctions.generateLongReadFastQFiles(haplotigReadNameFile,args.longReadFile,fastQFilePrefix) #Needs to work more efficiently, shouldn't just load the entire fastq into memory...right? (why not?) Do I do that at any other point? #Make this last just in case.
 
     readmeText="\nLong reads can be found in "+phasedFastqPath
     print(readmeText)
@@ -423,20 +439,32 @@ def partialPipeline(args):
     nPhaseFunctions.longReadValidation(longReadPositionNTFile,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile)
 
     #Run everything through nPhase
-    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
     updateLog(readmePath,readmeText)
 
     #Simplify datavis
-    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataFull.tsv")
-    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_visDataSimple.tsv")
+    dataVisPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataFull.tsv")
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_phasedDataSimple.tsv")
     nPhaseFunctions.simplifyDataVis(dataVisPath,simpleOutPath,1000)
 
-    #Generate plots
+    ################
+    #Generate plots#
+    ################
+
+    #Phased
     datavisPath=os.path.join(datavisFolderPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
-    nPhaseFunctions.generateDataVis(simpleOutPath,datavisPath)
+    nPhaseFunctions.generatePhasingVis(simpleOutPath,datavisPath)
+
+    #Coverage
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_covVis.tsv")
+    nPhaseFunctions.generateCoverageVis(simpleOutPath,datavisPath)
+
+    #Discordance
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
+    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
@@ -457,6 +485,11 @@ def partialPipeline(args):
 
     return 0
 
+def filtering(args):
+    phasedFastqPath=os.path.join(args.phasedPath,"FastQ")
+    haplotigReadNameFile=os.path.join(args.phasedPath, args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_clusterReadNames.tsv")
+    fastQFilePrefix=os.path.join(phasedFastqPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
+    nPhaseFunctions.generateLongReadFastQFiles(haplotigReadNameFile, args.longReadFile, fastQFilePrefix)
 
 def main():
     parser=argparse.ArgumentParser(description='Full ploidy agnostic phasing pipeline',add_help=False)
@@ -480,9 +513,12 @@ def main():
     parser_c = subparsers.add_parser('partial', help='Only run parts of the nPhase pipeline on your sample. NOTE: if you run into any issues with this mode please use the pipeline mode instead.',parents=[parser])
     required_c=parser_c.add_argument_group('required arguments')
 
+    parser_d=subparsers.add_parser('filtering',help='Filter obtained results and save the output to a different folder.',parents=[parser])
+    required_d=parser_d.add_argument_group('required arguments')
+
     #SHARED REQUIRED ARGUMENTS
 
-    for parserReference in [required_a,required_b,required_c]:
+    for parserReference in [required_a,required_b,required_c,required_d]:
         parserReference.add_argument('--sampleName',required=True, dest='strainName',help='Name of your sample, ex: "Individual_1"')
         parserReference.add_argument('--reference',required=True, dest='reference',help='Path to fasta file of reference genome to align to, ex: /home/reference/Individual_reference.fasta')
         parserReference.add_argument('--output',required=True, dest='outputFolder',help='Path to output folder, ex: /home/phased/')
@@ -507,6 +543,14 @@ def main():
     required_c.add_argument('--R1', dest='shortReadFile_R1',default="noSRMapping",help='Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz')
     required_c.add_argument('--R2', dest='shortReadFile_R2',default="noSRMapping",help='Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz')
 
+    #FILTER SPECIFIC ARGUMENTS
+    required_d.add_argument('--phasedPath', dest='phasedPath',help='Path to Phased folder, ex: /home/phased/Individual_1/Phased/')
+    required_d.add_argument('--dataVis', dest='dataVisPath',help='Path to phasedDataSimple file, ex: /home/phased/Individual_1/Phased/Individual_1_..._phasedDataSimple.tsv')
+    required_d.add_argument('--clusterStats', dest='clusterStatsPath',help='Path to clusterStats file, ex: /home/phased/Individual_1/Phased/FastQ/Individual_1_..._clusterStats.tsv')
+    required_d.add_argument('--minReads', dest='minReads', default=0,help='Minimal number of reads per cluster, filters out all clusters with fewer reads, ex: 10')
+    required_d.add_argument('--minBaseQ', dest='minBaseQ', default=0,help='Minimal average read quality per cluster, filters out all clusters with lower base quality, ex: 10')
+    required_d.add_argument('--minMapQ', dest='minMapQ', default=0,help='Minimal average mapping quality per cluster, filters out all clusters with lower mapping quality, ex: 10')
+
     args, unknown = parser.parse_known_args()
 
     if "mappedShortReads" in dir(args) or "vcf" in dir(args) or "mappedLongReads" in dir(args):
@@ -515,11 +559,15 @@ def main():
         nPhasePipeline(args)
     elif "contextDepthsFile" in dir(args):
         nPhaseAlgorithm(args)
+    elif "clusterStatsPath" in dir(args):
+        filtering(args)
     else:
-        print("Select pipeline or algorithm mode. For example:\n\nnphase pipeline [args]\n\nnphase algorithm [args]\n\nnphase partial [args]\n\n(or python nPhasePipeline.py [args] etc.)")
+        print("Select which mode of nphase to use. For example:\n\nnphase pipeline [args]\n\nnphase algorithm [args]\n\nnphase partial [args]\n\nnphase filter [args]")
 
     exit(0)
 
 if __name__=="__main__":
     main()
     exit(0)
+
+
