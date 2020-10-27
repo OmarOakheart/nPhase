@@ -49,12 +49,21 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
 
 def shortReadMapping(strainName,R1,R2,reference,outputFolder):
     outputLog=""
+
     #Mapping
+    samFileNoRGPath=os.path.join(outputFolder, strainName+".noRG.sam")
+    samFileNoRG=open(samFileNoRGPath,"w")
+    p=subprocess.run(["bwa","mem","-M", reference, R1, R2],stderr=subprocess.PIPE,stdout=samFileNoRG, universal_newlines=True)
+    samFileNoRG.close()
+    outputLog+="COMMAND: "+" ".join(["bwa","mem","-M", reference, R1, R2, ">", samFileNoRGPath])+"\n\n"
+    if p.stderr!="":
+        outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT is in "+samFileNoRGPath+"\n\n"
+
+    #Adding read groups
     samFile=os.path.join(outputFolder, strainName+".sam")
-    RGline="@RG\\tID:ID_"+strainName+"\\tLB:LB_"+strainName+"\\tPL:ILLUMINA\\tPU:PU_"+strainName+"\\tSM:SM_"+strainName
-    p=subprocess.run(["bwa","mem","-M","-R", RGline, reference, R1, R2, "-o", samFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["bwa","mem","-M","-R", RGline, reference, R1, R2, "-o", samFile])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
+    p=subprocess.run(["gatk", "AddOrReplaceReadGroups","-I",samFileNoRGPath,"-O",samFile,"-RGID","ID_"+strainName, "-RGLB","LB_"+strainName, "-RGPL","ILLUMINA", "-RGPU","PU_"+strainName, "-RGSM","SM_"+strainName],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["gatk", "AddOrReplaceReadGroups","-I",samFileNoRGPath,"-O",samFile,"-RGID","ID_"+strainName, "-RGLB","LB_"+strainName, "-RGPL","ILLUMINA", "-RGPU","PU_"+strainName, "-RGSM","SM_"+strainName])+"\n\n"
+    if p.stderr!="" or p.stdout!="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
     #Organizing mapped reads
@@ -99,6 +108,7 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
 
     try:
         #Cleaning up
+        os.remove(samFileNoRGPath)
         os.remove(samFile)
         os.remove(bamFile)
         os.remove(sortedBamFile)
@@ -116,7 +126,7 @@ def getShortReadPositions(hetVCFName,shortReadPosFileName):
     for line in hetVCFFile:
         line=line.strip("\n").split("\t")
         if "#" not in line[0]:
-            chr=line[0]
+            chr=line[0].replace(":","_")
             pos=line[1]
             ref=line[3]
             alts=line[4].split(",")
@@ -183,7 +193,7 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
 
     for line in bedFile:
         line=line.strip("\n").split("\t")
-        contig=line[0]
+        contig=line[0].replace(":","_")
         start=str(int(line[1])+1) #The bedFile is in 0-base, we want to stay in 1-base
         variantSet.add(contig+":"+start)
 
@@ -195,7 +205,9 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
     samFile=open(samPath,"r")
     for line in samFile:
         line=line.strip("\n").split("\t")
-        samLines.append(line)
+        if line[0][0]!="@":
+            line[2]=line[2].replace(":","_")
+            samLines.append(line)
 
     samFile.close()
 
@@ -419,10 +431,14 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     haplotigReadNameFile=open(haplotigReadNameFilePath,"r")
     for line in haplotigReadNameFile:
         line=line.strip("\n").split("\t")
-        if line[0] not in haplotigReadDict:
-            haplotigReadDict[line[0]]=[line[1]]
+        haplotigName=line[0]
+        readName=line[1]
+        readName=readName.split("_VCSTTP_")[0]
+        if haplotigName not in haplotigReadDict:
+            haplotigReadDict[haplotigName]=[readName]
         else:
-            haplotigReadDict[line[0]].append(line[1])
+            if readName not in haplotigReadDict[haplotigName]:
+                haplotigReadDict[haplotigName].append(readName)
 
     haplotigReadNameFile.close()
 
@@ -456,11 +472,7 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
         totalScore=0
         for read in reads:
             read="@"+read
-            try:
-                totalScore+=longReadMetaData[read]
-            except:
-                read=read.split("_")[0]
-                totalScore+=longReadMetaData[read]
+            totalScore+=longReadMetaData[read]
             readText=read+"\n"+"\n".join(longReadData[read])+"\n"
             haplotigFastQText+=readText
         clusterStatsText+=haplotigName+"\t"+str(len(set(reads)))+"\t"+str(round(totalScore/len(reads)))+"\n"
@@ -515,20 +527,67 @@ def simplifyDataVis(dataVisPath,simpleOutPath,distance):
     outFile.write(outFileText)
     outFile.close()
 
-def generateDataVis(dataVisPath,outPath):
-    outputPNG=outPath+"dataVis.png"
-    outputPDF=outPath+"dataVis.pdf"
-    outputSVG=outPath+"dataVis.svg"
+def generatePhasingVis(dataVisPath,outPath):
+    #Figure out how supported (as a %) each base is for each position in the cluster
+
+    outputPNG=outPath+"phasedVis.png"
+    outputPDF=outPath+"phasedVis.pdf"
+    outputSVG=outPath+"phasedVis.svg"
 
     tbl = pd.read_csv(dataVisPath, sep="\t", header=None)
     tbl.columns = ["contigName", "startPos", "endPos", "chr", "yValue"]
 
-    g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
-
-    #g=(ggplot(tbl,aes(y=tbl["yValue"],yend=tbl["yValue"],x=tbl["startPos"],xend=tbl["endPos"],color='factor(yValue)'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Distance from start of genome (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+    g=(ggplot(tbl,aes(y="yValue",yend="yValue",x="startPos",xend="endPos",color='yValue'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Position (bp)")+theme(subplots_adjust={'hspace': 0.7}))
 
     ggsave(g,filename=outputSVG,width=18, height=10)
     ggsave(g,filename=outputPNG,width=18, height=10)
     ggsave(g,filename=outputPDF,width=18, height=10)
 
-    return "Generated plots"
+    return "Generated phased plots"
+
+def generateCoverageVis(dataVisPath,outPath):
+    #Figure out how covered (as X) each heterozygous position is for each cluster
+
+    outputPNG=outPath+"coverageVis.png"
+    outputPDF=outPath+"coverageVis.pdf"
+    outputSVG=outPath+"coverageVis.svg"
+
+    tbl=pd.read_csv(dataVisPath,sep="\t",header=None,na_values="NA")
+    tbl.columns=["haplotigName","chr","pos","coverage"]
+
+    g=(ggplot(tbl,aes(x="pos",y="coverage",color='haplotigName'))+geom_line(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+ylab("Coverage (X)")+xlab("Position (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+
+    ggsave(g,filename=outputSVG,width=18,height=10)
+    ggsave(g,filename=outputPNG,width=18,height=10)
+    ggsave(g,filename=outputPDF,width=18,height=10)
+
+    return "Generated coverage plots"
+
+def generateDiscordanceVis(dataVisPath,outPath):
+    #Figure out how supported (as a %) each base is for each position in the cluster
+
+    outputPNG=outPath+"discordanceVis.png"
+    outputPDF=outPath+"discordanceVis.pdf"
+    outputSVG=outPath+"discordanceVis.svg"
+
+    tbl=pd.read_csv(dataVisPath,sep="\t",header=None,comment="#")
+    tbl.columns=["cluster","chr","position","base","frequency","coverage"]
+
+    g=(ggplot(tbl,aes(y="frequency",x='cluster'))+geom_violin(scale="width")+facet_wrap("~chr",scales="free")+coord_flip()+ylim(0,1)+xlab("Cluster name")+ylab("Allele frequency (%)")+ggtitle("Allele frequency by cluster (all clusters have same max width)")+theme(subplots_adjust={'wspace': 0.25}))
+
+    ggsave(g,filename=outputPNG,width=18,height=10)
+    ggsave(g,filename=outputSVG,width=18,height=10)
+    ggsave(g,filename=outputPDF,width=18,height=10)
+
+    return "Generated discordance plots"
+
+
+
+
+
+
+
+
+
+
+
