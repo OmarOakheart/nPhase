@@ -763,14 +763,15 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mai
         if len(chrms)>2:
             print("MULTI-CHROMOSOME CLUSTER ERROR",chrms)
             exit(1)
-        for readName in clusterInfo["names"]:
-            readName=readName.replace("chimeric-","")
-            if readName in splitTrackingDict:
-                splitReads=splitTrackingDict[readName][list(chrms)[0]]
-                for splitRead in splitReads:
-                    clusterReadText+="\t".join([clusterName,splitRead])+"\n"
-            else:
-                clusterReadText+="\t".join([clusterName,readName])+"\n"
+        if len(chrms)>0:
+            for readName in clusterInfo["names"]:
+                readName=readName.replace("chimeric-","")
+                if readName in splitTrackingDict:
+                    splitReads=splitTrackingDict[readName][list(chrms)[0]]
+                    for splitRead in splitReads:
+                        clusterReadText+="\t".join([clusterName,splitRead])+"\n"
+                else:
+                    clusterReadText+="\t".join([clusterName,readName])+"\n"
 
     clusterReadFilePath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_clusterReadNames.tsv")
     clusterReadFile=open(clusterReadFilePath,"w")
