@@ -334,7 +334,7 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
         for SNP in SNPs:
             i=SNPs.index(SNP)
             itemList=[]
-            for j in range(i-distance,i+distance+1):
+            for j in range(i-distance,i+distance+1): #With this system we end up kinda taking deletions into account, good or bad? Check with validationCode
                 if j>=0 and j<len(SNPs):
                     itemList.append(SNPs[j])
             if SNP not in contextDepths:
@@ -393,7 +393,27 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
             longReadSets[read[0]]=readSet
             longReadTuples[read[0]]=tuple(readSet)
             uniqueLongReadIDs.add(read[0])
+        else: #Keep track of which long reads are duplicates
+            pass
 
+    #Keep track of which long reads are duplicates
+    longReadDuplicateDict=set()
+    
+    for read in longReads:
+        readSet=frozenset(read[1:])
+        if readSet not in longReadDuplicateDict:
+            longReadDuplicateDict[readSet]=[]
+        longReadDuplicateDict[readSet].append(read[0])
+        #Keep track of which long reads are duplicates
+    
+    longReadDuplicateText=""
+    for longReadList in longReadDuplicateDict.values():
+        longReadDuplicateText+="\t".join(longReadList)+"\n"
+    
+    longReadDuplicateTextFile=open(validatedSNPAssignmentsFile+"dupReads.tsv","w")
+    longReadDuplicateTextFile.write(longReadDuplicateText)
+    longReadDuplicateTextFile.close()
+        
     ###########################################################################################
     #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
     #You can't just do this step before you remove reads based on coverage, that's ridiculous.#
