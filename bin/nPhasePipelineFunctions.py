@@ -2,6 +2,7 @@ import os
 import subprocess
 import re
 import gzip
+import sortedcontainers
 import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
@@ -18,22 +19,22 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
 
     #Remove unmapped reads
     passSamFile=os.path.join(outputFolder,strainName+".pass.sam")
-    p=subprocess.run(["samtools","view","-h","-t",reference,"-F",flag,samFile,"-o",passSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools","view","-t",reference,"-F",flag,samFile,"-o",passSamFile])+"\n\n"
+    p=subprocess.run(["samtools","view","-h","-t",reference,"-@",threads,"-F",flag,samFile,"-o",passSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools","view","-t",reference,"-@",threads,"-F",flag,samFile,"-o",passSamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
     #Sort sam file
     sortedHeaderSamFile=os.path.join(outputFolder,strainName+".sorted.header.sam")
-    p=subprocess.run(["samtools","sort",passSamFile,"-o",sortedHeaderSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools","sort",passSamFile,"-o",sortedHeaderSamFile])+"\n\n"
+    p=subprocess.run(["samtools","sort",passSamFile,"-@",threads,"-o",sortedHeaderSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools","sort",passSamFile,"-@",threads,"-o",sortedHeaderSamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
     #This looks stupid but is the safest way I could think of to get rid of the SAM header (it gets in the way of another function later)
     sortedSamFile=os.path.join(outputFolder,strainName+".sorted.sam")
-    p=subprocess.run(["samtools","view",sortedHeaderSamFile,"-o",sortedSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools","view",sortedHeaderSamFile,"-o",sortedSamFile])+"\n\n"
+    p=subprocess.run(["samtools","view",sortedHeaderSamFile,"-@",threads,"-o",sortedSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools","view",sortedHeaderSamFile,"-@",threads,"-o",sortedSamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
@@ -47,15 +48,15 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
 
     return outputLog,"Long reads successfully mapped to reference"
 
-def shortReadMapping(strainName,R1,R2,reference,outputFolder):
+def shortReadMapping(strainName,R1,R2,reference,outputFolder,threads):
     outputLog=""
 
     #Mapping
     samFileNoRGPath=os.path.join(outputFolder, strainName+".noRG.sam")
     samFileNoRG=open(samFileNoRGPath,"w")
-    p=subprocess.run(["bwa","mem","-M", reference, R1, R2],stderr=subprocess.PIPE,stdout=samFileNoRG, universal_newlines=True)
+    p=subprocess.run(["bwa","mem","-t",threads,"-M", reference, R1, R2],stderr=subprocess.PIPE,stdout=samFileNoRG, universal_newlines=True)
     samFileNoRG.close()
-    outputLog+="COMMAND: "+" ".join(["bwa","mem","-M", reference, R1, R2, ">", samFileNoRGPath])+"\n\n"
+    outputLog+="COMMAND: "+" ".join(["bwa","mem","-t",threads,"-M", reference, R1, R2, ">", samFileNoRGPath])+"\n\n"
     if p.stderr!="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT is in "+samFileNoRGPath+"\n\n"
 
@@ -72,18 +73,18 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
 
     print("Removing quality 0 (multimapped) reads, turning to bam and sorting it")
 
-    p=subprocess.run(["samtools","view","-bT",reference,"-q","1",samFile,"-o",bamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools","view","-bT",reference,"-q","1",samFile,"-o",bamFile])+"\n\n"
+    p=subprocess.run(["samtools","view","-@",threads,"-bT",reference,"-q","1",samFile,"-o",bamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools","view","-@",threads,"-bT",reference,"-q","1",samFile,"-o",bamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
-    p=subprocess.run(["samtools", "sort", bamFile, "-o", sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools", "sort", bamFile, "-o", sortedBamFile])+"\n\n"
+    p=subprocess.run(["samtools", "sort", bamFile,"-@",threads, "-o", sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools", "sort", bamFile,"-@",threads, "-o", sortedBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
-    p=subprocess.run(["samtools", "index", sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools", "index", sortedBamFile])+"\n\n"
+    p=subprocess.run(["samtools", "index","-@",threads, sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools", "index","-@",threads, sortedBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
@@ -96,13 +97,13 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder):
 
     #Finalizing
     finalBamFile=os.path.join(outputFolder,strainName+".final.bam")
-    p=subprocess.run(["samtools", "sort", MDsortedBamFile, "-o", finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools", "sort", MDsortedBamFile, "-o", finalBamFile])+"\n\n"
+    p=subprocess.run(["samtools", "sort", MDsortedBamFile, "-@",threads,"-o", finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools", "sort", MDsortedBamFile, "-@",threads,"-o", finalBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
-    p=subprocess.run(["samtools", "index", finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
-    outputLog+="COMMAND: "+" ".join(["samtools", "index", finalBamFile])+"\n\n"
+    p=subprocess.run(["samtools", "index","-@",threads, finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
+    outputLog+="COMMAND: "+" ".join(["samtools", "index","-@",threads, finalBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
@@ -334,7 +335,7 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
         for SNP in SNPs:
             i=SNPs.index(SNP)
             itemList=[]
-            for j in range(i-distance,i+distance+1): #With this system we end up kinda taking deletions into account, good or bad? Check with validationCode
+            for j in range(i-distance,i+distance+1):
                 if j>=0 and j<len(SNPs):
                     itemList.append(SNPs[j])
             if SNP not in contextDepths:
@@ -393,27 +394,7 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
             longReadSets[read[0]]=readSet
             longReadTuples[read[0]]=tuple(readSet)
             uniqueLongReadIDs.add(read[0])
-        else: #Keep track of which long reads are duplicates
-            pass
 
-    #Keep track of which long reads are duplicates
-    longReadDuplicateDict=set()
-    
-    for read in longReads:
-        readSet=frozenset(read[1:])
-        if readSet not in longReadDuplicateDict:
-            longReadDuplicateDict[readSet]=[]
-        longReadDuplicateDict[readSet].append(read[0])
-        #Keep track of which long reads are duplicates
-    
-    longReadDuplicateText=""
-    for longReadList in longReadDuplicateDict.values():
-        longReadDuplicateText+="\t".join(longReadList)+"\n"
-    
-    longReadDuplicateTextFile=open(validatedSNPAssignmentsFile+"dupReads.tsv","w")
-    longReadDuplicateTextFile.write(longReadDuplicateText)
-    longReadDuplicateTextFile.close()
-        
     ###########################################################################################
     #^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^#
     #You can't just do this step before you remove reads based on coverage, that's ridiculous.#
@@ -554,14 +535,14 @@ def generatePhasingVis(dataVisPath,outPath):
     outputPDF=outPath+"phasedVis.pdf"
     outputSVG=outPath+"phasedVis.svg"
 
-    tbl = pd.read_csv(dataVisPath, sep="\t", header=None)
-    tbl.columns = ["contigName", "startPos", "endPos", "chr", "yValue"]
+    tbl=pd.read_csv(dataVisPath,sep="\t",header=None)
+    tbl.columns=["contigName","startPos","endPos","chr","yValue"]
 
-    g=(ggplot(tbl,aes(y="yValue",yend="yValue",x="startPos",xend="endPos",color='yValue'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales = "free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Position (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+    g=(ggplot(tbl,aes(y="contigName",yend="contigName",x="startPos",xend="endPos",color='contigName'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Position (bp)")+theme(subplots_adjust={'hspace':0.7}))
 
-    ggsave(g,filename=outputSVG,width=18, height=10)
-    ggsave(g,filename=outputPNG,width=18, height=10)
-    ggsave(g,filename=outputPDF,width=18, height=10)
+    ggsave(g,filename=outputSVG,width=18,height=10)
+    ggsave(g,filename=outputPNG,width=18,height=10)
+    ggsave(g,filename=outputPDF,width=18,height=10)
 
     return "Generated phased plots"
 
@@ -601,11 +582,257 @@ def generateDiscordanceVis(dataVisPath,outPath):
 
     return "Generated discordance plots"
 
+def generateDiscordance(clusterReadFilePath,readFilePath,outPath):
+    #Figure out how supported (as a %) each base is for each position in the cluster
+
+    #Identify warnings/sort by how bad & output a text file
+
+    #Output a plot
+    clusterDict={} #All reads associated with clusters
+
+    clusterFile=open(clusterReadFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={} #All SNPs associated with reads
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={} #All SNPs within clusters based on the reads involved
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                base=SNP.split("=")[1]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]={}
+                if base not in rawDict[cluster][chr][position]:
+                    rawDict[cluster][chr][position][base]=0
+                rawDict[cluster][chr][position][base]+=1 #Count the number for each base
+
+    allFrequencies=[]
+
+    for cluster,chrs in rawDict.items():
+        for chr,positions in chrs.items():
+            for position, bases in positions.items():
+                baseCovs=bases.values()
+                totalCov=sum(baseCovs)
+                for base, coverage in bases.items():
+                    allFrequencies.append((cluster,chr,position,base,str(coverage/totalCov),str(totalCov)))
+
+    cleanFullText="#cluster\tchr\tposition\tbase\tfrequency\tcoverage\n"
+
+    for freq in allFrequencies:
+        cleanFullText+="\t".join(freq)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    pass
+
+def generateCoverage(clusterFilePath,readFilePath,outPath,windowSize):
+    #Figure out how covered each read position is in each cluster
+
+    totalCoverage=0
+    uniquePositions=set()
+
+    clusterDict={}
+
+    clusterFile=open(clusterFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={}
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={}
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                uniquePositions.add(SNP.split("=")[0])
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]=0
+                rawDict[cluster][chr][position]+=1
+                totalCoverage+=1
+
+    cleanFullText=""
+
+    betterClusters={}
+
+    for cluster,chrs in rawDict.items():
+        betterClusters[cluster]={}
+        for chr,positions in rawDict[cluster].items():
+            betterClusters[cluster][chr]=[]
+            for pos in positions:
+                cov=str(rawDict[cluster][chr][pos])
+                if chr not in betterClusters[cluster].keys():
+                    betterClusters[cluster][chr]=[]
+                betterClusters[cluster][chr].append((int(pos),int(cov)))
+            sortedPositions=betterClusters[cluster][chr]
+            sortedPositions.sort()
+            betterClusters[cluster][chr]=sortedPositions
+
+    windowDict={}
+
+    for cluster,chrs in betterClusters.items():
+        windowDict[cluster]={}
+        for chr in chrs.keys():
+            if chr not in windowDict[cluster]:
+                windowDict[cluster][chr]={}
+            sortedPositions=betterClusters[cluster][chr]
+            sortedPositions.sort()
+            minPos=0
+            maxPos=int(sortedPositions[-1][0])+windowSize
+            for i in range(minPos,maxPos,windowSize):
+                window=[]
+                for position in sortedPositions:
+                    if int(position[0])>=i and int(position[0])<i+windowSize:
+                        window.append(int(position[1]))
+                if len(window)==0:
+                    mean="NA"
+                else:
+                    mean=sum(window)/len(window)
+                    if mean==0:
+                        mean="NA"
+                windowDict[cluster][chr][i+(windowSize/2)]=str(mean)
+
+    cleanFullText=""
+
+    for cluster,chrs in windowDict.items():
+        for chr,positions in chrs.items():
+            for pos,cov in positions.items():
+                cleanFullText+=cluster+"\t"+chr+"\t"+str(pos)+"\t"+str(cov)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    minCov=int(0.05*(totalCoverage/len(uniquePositions)))
+
+    return minCov
 
 
+def giveMeFullData(clusters):
+    clusterText=""
+    sortedClusterLines=sortedcontainers.SortedList()
+    clusterLines=[]
+    for clusterName, cluster in clusters.items():
+        for SNP in cluster:
+            contig=SNP.split(":")[0]
+            position=int(SNP.split(":")[1].split("=")[0])
+            sortedClusterLines.add([position,clusterName,contig])
+    i=1
+    previouslySeen={sortedClusterLines[0][1]:i}
+    for line in sortedClusterLines:
+        if line[1] not in previouslySeen:
+            i+=1
+            previouslySeen[line[1]]=i
+        clusterLines.append([line[1],line[0],line[2],previouslySeen[line[1]]])
+    for line in clusterLines:
+        clusterText+="\t".join([str(x) for x in line])+"\n"
+    return clusterText
 
+def filterCoverage(clusterReadFilePath,readFilePath,outPath,minCov):
+    #Filter out how based on coverage
 
+    clusterDict={} #All reads associated with clusters
 
+    clusterFile=open(clusterReadFilePath,"r")
+
+    for line in clusterFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in clusterDict:
+            clusterDict[line[0]]=set()
+        clusterDict[line[0]].add(line[1])
+
+    clusterFile.close()
+
+    readDict={} #All SNPs associated with reads
+
+    readFile=open(readFilePath,"r")
+
+    for line in readFile:
+        line=line.strip("\n").split("\t")
+        if line[0] not in readDict:
+            readDict[line[0]]=set()
+        readDict[line[0]].update(line[1:])
+
+    readFile.close()
+
+    rawDict={} #All SNPs within clusters based on the reads involved
+
+    for cluster,reads in clusterDict.items():
+        rawDict[cluster]={}
+        for read in reads:
+            for SNP in readDict[read]:
+                chr=SNP.split(":")[0]
+                position=SNP.split(":")[1].split("=")[0]
+                base=SNP.split("=")[1]
+                if chr not in rawDict[cluster]:
+                    rawDict[cluster][chr]={}
+                if position not in rawDict[cluster][chr]:
+                    rawDict[cluster][chr][position]=0
+                rawDict[cluster][chr][position]+=1 #Count the number for each base
+
+    allFrequencies=[]
+
+    for cluster,chrs in rawDict.items():
+        for chr,positions in chrs.items():
+            for position, coverage in positions.items():
+                if coverage>minCov:
+                    allFrequencies.append((cluster,chr,position,str(coverage)))
+
+    cleanFullText="#cluster\tchr\tcoverage\tposition\n"
+
+    for freq in allFrequencies:
+        cleanFullText+="\t".join(freq)+"\n"
+
+    cleanFullTextOutputFile=open(outPath,"w")
+    cleanFullTextOutputFile.write(cleanFullText)
+    cleanFullTextOutputFile.close()
+
+    pass
 
 
 

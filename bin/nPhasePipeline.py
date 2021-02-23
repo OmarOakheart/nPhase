@@ -4,6 +4,7 @@ import os
 import subprocess
 import bin.nPhasePipelineFunctions as nPhaseFunctions
 import bin.nPhase as phaseTool
+import bin.nPhaseCleaning as cleaningTool
 
 def updateLog(logFilePath,logText):
     logFile=open(logFilePath,"a")
@@ -37,23 +38,26 @@ def nPhasePipeline(args):
     ########################
 
     #Make sure the reference is indexed (might be missing a process)
-    p=subprocess.run(["samtools","faidx",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["samtools","faidx",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".fai"):
+        p=subprocess.run(["samtools","faidx",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["samtools","faidx",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
-    p=subprocess.run(["bwa","index",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["bwa","index",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".bwt"):
+        p=subprocess.run(["bwa","index",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["bwa","index",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
-    p=subprocess.run(["gatk","CreateSequenceDictionary","-R",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["gatk","CreateSequenceDictionary","-R",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".dict"):
+        p=subprocess.run(["gatk","CreateSequenceDictionary","-R",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["gatk","CreateSequenceDictionary","-R",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
     ########################
     #Pre-process long reads#
@@ -71,7 +75,7 @@ def nPhasePipeline(args):
     #########################
 
     #Map short reads to reference
-    outputLog,systemMessage=nPhaseFunctions.shortReadMapping(args.strainName,args.shortReadFile_R1,args.shortReadFile_R2,args.reference,mappedShortReadPath)
+    outputLog,systemMessage=nPhaseFunctions.shortReadMapping(args.strainName,args.shortReadFile_R1,args.shortReadFile_R2,args.reference,mappedShortReadPath,args.threads)
     print(systemMessage)
     updateLog(fullLogPath,outputLog)
 
@@ -299,23 +303,26 @@ def partialPipeline(args):
     ########################
 
     #Make sure the reference is indexed (might be missing a process)
-    p=subprocess.run(["samtools","faidx",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["samtools","faidx",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".fai"):
+        p=subprocess.run(["samtools","faidx",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["samtools","faidx",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
-    p=subprocess.run(["bwa","index",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["bwa","index",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".bwt"):
+        p=subprocess.run(["bwa","index",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["bwa","index",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
-    p=subprocess.run(["gatk","CreateSequenceDictionary","-R",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
-    logText="COMMAND: "+" ".join(["gatk","CreateSequenceDictionary","-R",args.reference])+"\n\n"
-    if p.stderr!="" or p.stdout !="":
-        logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-    updateLog(fullLogPath,logText)
+    if not os.path.isfile(args.reference+".dict"):
+        p=subprocess.run(["gatk","CreateSequenceDictionary","-R",args.reference],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
+        logText="COMMAND: "+" ".join(["gatk","CreateSequenceDictionary","-R",args.reference])+"\n\n"
+        if p.stderr!="" or p.stdout !="":
+            logText+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
+        updateLog(fullLogPath,logText)
 
     ########################
     #Pre-process long reads#
@@ -335,7 +342,7 @@ def partialPipeline(args):
 
     #Map short reads to reference
     if args.mappedShortReads=="noMapped" and args.vcfFile=="noVCF":
-        outputLog,systemMessage=nPhaseFunctions.shortReadMapping(args.strainName,args.shortReadFile_R1,args.shortReadFile_R2,args.reference,mappedShortReadPath)
+        outputLog,systemMessage=nPhaseFunctions.shortReadMapping(args.strainName,args.shortReadFile_R1,args.shortReadFile_R2,args.reference,mappedShortReadPath,args.threads)
         print(systemMessage)
         updateLog(fullLogPath,outputLog)
 
@@ -485,24 +492,15 @@ def partialPipeline(args):
 
     return 0
 
-def filtering(args):
-    phasedFastqPath=os.path.join(args.phasedPath,"FastQ")
-    haplotigReadNameFile=os.path.join(args.phasedPath, args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_clusterReadNames.tsv")
-    fastQFilePrefix=os.path.join(phasedFastqPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
-    nPhaseFunctions.generateLongReadFastQFiles(haplotigReadNameFile, args.longReadFile, fastQFilePrefix)
+def cleaning(args):
+    cleaningTool.nPhaseCleaning(args.phasingResult,args.longReadFile,args.strainName,args.percentKept,args.maxDiscordance,args.deduplicate,args.FFBool)
 
 def main():
-    parser=argparse.ArgumentParser(description='Full ploidy agnostic phasing pipeline',add_help=False)
-
-    #OPTIONAL ARGUMENTS
-    parser.add_argument('--threads', dest='threads',type=str,nargs="?",default="8",help='Number of threads to use on some steps, default 8')
-    parser.add_argument('--maxID', dest='maxID',type=float,nargs="?",default=0.05,help='MaxID parameter, determines how different two clusters must be to prevent them from merging. Default 0.05')
-    parser.add_argument('--minOvl', dest='minOvl',type=float,nargs="?",default=0.1,help='minOvl parameter, determines the minimal percentage of overlap required to allow a merge between two clusters that have fewer than 100 heterozygous SNPs in common. Default 0.1')
-    parser.add_argument('--minSim', dest='minSim',type=float,nargs="?",default=0.01,help='minSim parameter, determines the minimal percentage of similarity required to allow a merge between two clusters. Default 0.01')
-    parser.add_argument('--minLen', dest='minLen',type=int,nargs="?",default=0,help='minLen parameter, any cluster based on fewer than N reads will not be output. Default 0')
+    parser=argparse.ArgumentParser(prog="nPhase",description='Full ploidy agnostic phasing pipeline',add_help=False)
+    parser.add_argument('--version',action='version',version='%(prog)s 1.1.0')
 
     #CREATING SEPARATE MODES
-    subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, whereas selecting 'nPhase' will only perform the phasing operation",dest='command')
+    subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, 'nPhase' will only perform the phasing operation, 'partial' will only perform part of the pipeline, 'cleaning' will run automated cleaning steps on nPhase results",dest='command')
 
     parser_a = subparsers.add_parser('pipeline', help='Run the entire nPhase pipeline on your sample.',parents=[parser])
     required_a=parser_a.add_argument_group('required arguments')
@@ -513,25 +511,21 @@ def main():
     parser_c = subparsers.add_parser('partial', help='Only run parts of the nPhase pipeline on your sample. NOTE: if you run into any issues with this mode please use the pipeline mode instead.',parents=[parser])
     required_c=parser_c.add_argument_group('required arguments')
 
-    parser_d=subparsers.add_parser('filtering',help='Filter obtained results and save the output to a different folder.',parents=[parser])
-    required_d=parser_d.add_argument_group('required arguments')
+    cleaningParser=subparsers.add_parser('cleaning',help='Clean nPhase results using a simple three step pipeline. Filtering, merging, gap filling.',parents=[parser])
+    required_Cleaning=cleaningParser.add_argument_group('required arguments')
 
     #SHARED REQUIRED ARGUMENTS
 
-    for parserReference in [required_a,required_b,required_c,required_d]:
+    for parserReference in [required_a,required_b,required_c,required_Cleaning]:
         parserReference.add_argument('--sampleName',required=True, dest='strainName',help='Name of your sample, ex: "Individual_1"')
-        parserReference.add_argument('--reference',required=True, dest='reference',help='Path to fasta file of reference genome to align to, ex: /home/reference/Individual_reference.fasta')
-        parserReference.add_argument('--output',required=True, dest='outputFolder',help='Path to output folder, ex: /home/phased/')
         parserReference.add_argument('--longReads',required=True, dest='longReadFile',help='Path to long read FastQ file, ex: /home/longReads/Individual_1.fastq.gz')
 
     #FULL PIPELINE SPECIFIC ARGUMENTS
-
     required_a.add_argument('--longReadPlatform',required=True, dest='longReadPlatform',choices=['ont','pacbio'],help="Long read platform, must be 'ont' or 'pacbio'")
     required_a.add_argument('--R1',required=True, dest='shortReadFile_R1',help='Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz')
     required_a.add_argument('--R2',required=True, dest='shortReadFile_R2',help='Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz')
 
     #NPHASE SPECIFIC ARGUMENTS
-
     required_b.add_argument('--contextDepth',required=True, dest='contextDepthsFile',help='Path to context depths file, ex: /home/phased/Individual_1/Overlaps/Individual_1.contextDepths.tsv')
     required_b.add_argument('--processedLongReads',required=True, dest='validatedSNPAssignmentsFile',help='Path to validated long read SNPs, ex: /home/phased/Individual_1/VariantCalls/longReads/Individual_1.hetPositions.SNPxLongReads.validated.tsv')
 
@@ -543,13 +537,22 @@ def main():
     required_c.add_argument('--R1', dest='shortReadFile_R1',default="noSRMapping",help='Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz')
     required_c.add_argument('--R2', dest='shortReadFile_R2',default="noSRMapping",help='Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz')
 
-    #FILTER SPECIFIC ARGUMENTS
-    required_d.add_argument('--phasedPath', dest='phasedPath',help='Path to Phased folder, ex: /home/phased/Individual_1/Phased/')
-    required_d.add_argument('--dataVis', dest='dataVisPath',help='Path to phasedDataSimple file, ex: /home/phased/Individual_1/Phased/Individual_1_..._phasedDataSimple.tsv')
-    required_d.add_argument('--clusterStats', dest='clusterStatsPath',help='Path to clusterStats file, ex: /home/phased/Individual_1/Phased/FastQ/Individual_1_..._clusterStats.tsv')
-    required_d.add_argument('--minReads', dest='minReads', default=0,help='Minimal number of reads per cluster, filters out all clusters with fewer reads, ex: 10')
-    required_d.add_argument('--minBaseQ', dest='minBaseQ', default=0,help='Minimal average read quality per cluster, filters out all clusters with lower base quality, ex: 10')
-    required_d.add_argument('--minMapQ', dest='minMapQ', default=0,help='Minimal average mapping quality per cluster, filters out all clusters with lower mapping quality, ex: 10')
+    #CLEANING SPECIFIC ARGUMENTS
+    required_Cleaning.add_argument('--resultFolder',required=True,dest='phasingResult',help='Path to output folder, ex: /home/nphaseResults/Individual_1/')
+    required_Cleaning.add_argument('--filterPct', dest='percentKept',type=float,nargs="?",default=2.0,help='Percentage of results to filter out. Default 2.0')
+    required_Cleaning.add_argument('--fillGaps',dest='deduplicate',type=bool,nargs="?",default=True,help='Attempt to fill gaps by redistributing reads from most covered cluster. Set to 0 to disable this step. Default 1')
+    required_Cleaning.add_argument('--filterFirst',dest='FFBool',type=bool,nargs="?",default=False,help='Perform the filtering step before the merging step. Set to 1 to enable. Default 0')
+    required_Cleaning.add_argument('--setMaxDiscordance',dest='maxDiscordance',type=float,nargs="?",default=0.0,help='If this is set higher than 0, use this percentage as the stopping rule for merging instead of using the mean discordance of raw results. Inputting 6.8 means 6.8%% discordance max allowed. Default 0')
+
+    #OPTIONAL SHARED ARGUMENTS
+    for parserReference in [required_a,required_b,required_c]:
+        parserReference.add_argument('--reference',required=True,dest='reference',help='Path to fasta file of reference genome to align to, ex: /home/reference/Individual_reference.fasta')
+        parserReference.add_argument('--output',required=True,dest='outputFolder',help='Path to output folder, ex: /home/phased/')
+        parserReference.add_argument('--threads',dest='threads',type=str,nargs="?",default="8",help='Number of threads to use on some steps. Default 8')
+        parserReference.add_argument('--maxID',dest='maxID',type=float,nargs="?",default=0.05,help='MaxID parameter, determines how different two clusters must be to prevent them from merging. Default 0.05')
+        parserReference.add_argument('--minOvl',dest='minOvl',type=float,nargs="?",default=0.1,help='minOvl parameter, determines the minimal percentage of overlap required to allow a merge between two clusters that have fewer than 100 heterozygous SNPs in common. Default 0.1')
+        parserReference.add_argument('--minSim',dest='minSim',type=float,nargs="?",default=0.01,help='minSim parameter, determines the minimal percentage of similarity required to allow a merge between two clusters. Default 0.01')
+        parserReference.add_argument('--minLen',dest='minLen',type=int,nargs="?",default=0,help='minLen parameter, any cluster based on fewer than N reads will not be output. Default 0')
 
     args, unknown = parser.parse_known_args()
 
@@ -559,10 +562,10 @@ def main():
         nPhasePipeline(args)
     elif "contextDepthsFile" in dir(args):
         nPhaseAlgorithm(args)
-    elif "clusterStatsPath" in dir(args):
-        filtering(args)
+    elif "phasingResult" in dir(args):
+        cleaning(args)
     else:
-        print("Select which mode of nphase to use. For example:\n\nnphase pipeline [args]\n\nnphase algorithm [args]\n\nnphase partial [args]\n\nnphase filter [args]")
+        print("Select which mode of nphase to use. For example:\n\nnphase pipeline [args] [-h]\n\nnphase algorithm [args] [-h]\n\nnphase partial [args] [-h]\n\nnphase filter [args] [-h]")
 
     exit(0)
 
