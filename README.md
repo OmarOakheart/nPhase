@@ -26,6 +26,14 @@ nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_refere
                 --output /path/to/outputFolder
 ```
 
+Once you've phased your data, you can use our automated cleaning method on the raw ressults with the following command:
+
+
+
+```
+nphase cleaning --sampleName Cleaning_1 --resultFolder /path/to/outputFolder/Individual_1
+                --longReads /path/to/Individual_1_longReads.fastq.gz
+```
 
 # Installation
 
@@ -119,10 +127,10 @@ nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FO
                --mappedShortReads MAPPED_SHORT_READ_FILE --longReadPlatform {ont,pacbio}
 ```
 
-# Parameters
+# Phasing Parameters
 
 ```
-nphase pipeline [-h] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] --sampleName SAMPLE_NAME
+nphase pipeline [-h] [--version] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] --sampleName SAMPLE_NAME
                        --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE --longReadPlatform {ont,pacbio} --R1 SHORT_READ_FILE_R1 --R2
                        SHORT_READ_FILE_R2
 or
@@ -174,6 +182,7 @@ additional arguments potentially required by nphase partial:
 
 optional arguments:
   -h, --help            show this help message and exit
+  --version             show program's version number and exit
   --threads [THREADS]   Number of threads to use on some steps, default 8
   --maxID [MAXID]       MaxID parameter, determines how different two clusters must be to prevent them from merging. Default 0.05
   --minOvl [MINOVL]     minOvl parameter, determines the minimal percentage of overlap required to allow a merge between two clusters that have fewer than
@@ -183,12 +192,41 @@ optional arguments:
 
 ```
 
+### Cleaning Parameters
+
+```
+nPhase cleaning [-h] [--version] --sampleName STRAINNAME --longReads LONGREADFILE --resultFolder PHASINGRESULT [--filterPct [PERCENTKEPT]]
+                       [--fillGaps [DEDUPLICATE]] [--filterFirst [FFBOOL]] [--setMaxDiscordance [MAXDISCORDANCE]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --version             show program's version number and exit
+
+required arguments:
+  --sampleName STRAINNAME
+                        Name of your sample, ex: "Individual_1"
+  --longReads LONGREADFILE
+                        Path to long read FastQ file, ex: /home/longReads/Individual_1.fastq.gz
+  --resultFolder PHASINGRESULT
+                        Path to output folder, ex: /home/nphaseResults/Individual_1/
+  --filterPct [PERCENTKEPT]
+                        Percentage of results to filter out. Default 2.0
+  --fillGaps [DEDUPLICATE]
+                        Attempt to fill gaps by redistributing reads from most covered cluster. Set to 0 to disable this step. Default 1
+  --filterFirst [FFBOOL]
+                        Perform the filtering step before the merging step. Set to 1 to enable. Default 0
+  --setMaxDiscordance [MAXDISCORDANCE]
+                        If this is set higher than 0, use this percentage as the stopping rule for merging instead of using the mean discordance of raw
+                        results. Inputting 6.8 means 6.8% discordance max allowed. Default 0
+```
+
+
 ### Paper
 
 [nPhase: An accurate and contiguous phasing method for polyploids](https://www.biorxiv.org/content/10.1101/2020.07.24.219105v1)
 
 
-### Media
+### Presentations
 
 Online lightning talk I gave about nPhase for an Oxford Nanopore event [5:44]: [link](https://drive.google.com/file/d/16quLufiNhICXqmAAGRYEIy1MivWVMXVI/view?usp=sharing)
 
