@@ -236,6 +236,8 @@ Current recommendations for default parameters are at least 20X coverage per hap
 
 It is currently untested on pacbio data so if you have a pacbio dataset (with a known ground truth) please contact me (raise an issue on github or email me), especially if you have errors.
 
+There is an example dataset on this github, in the example folder, which you can test nPhase on. It contains a reference sequence, short reads and long reads. The result should look like a triploid and it should run quickly.
+
 ### Contact me
 
 email: oabousaada@unistra.fr
