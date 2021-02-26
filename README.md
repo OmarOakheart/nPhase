@@ -240,4 +240,4 @@ There is an example dataset on this github, in the example folder, which you can
 
 ### Contact me
 
-email: oabousaada@unistra.fr
+email: omaroakheart@gmail.com
