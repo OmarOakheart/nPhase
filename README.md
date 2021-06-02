@@ -23,7 +23,7 @@ Then you can phase your data with the following command:
 nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_referenceGenome.fasta 
                 --R1 /path/to/Individual_1_shortReads_R1.fastq.gz --R2 /path/to/Individual_1_shortReads_R2.fastq.gz
                 --longReads /path/to/Individual_1_longReads.fastq.gz --longReadPlatform [ont|pacbio]
-                --output /path/to/outputFolder
+                --output /path/to/outputFolder --threads 8
 ```
 
 Once you've phased your data, you can use our automated cleaning method on the raw results with the following command:
@@ -32,7 +32,7 @@ Once you've phased your data, you can use our automated cleaning method on the r
 
 ```
 nphase cleaning --sampleName Cleaning_1 --resultFolder /path/to/outputFolder/Individual_1
-                --longReads /path/to/Individual_1_longReads.fastq.gz
+                --longReads /path/to/Individual_1_longReads.fastq.gz --threads 8
 ```
 
 # Installation
