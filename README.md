@@ -80,7 +80,7 @@ There are two main ways to run nPhase:
 
 ```
 nphase pipeline --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-                --longReadPlatform {ont,pacbio} --R1 SHORT_READ_FILE_R1 --R2 SHORT_READ_FILE_R2
+                --longReadPlatform {ont,pacbio} --R1 SHORT_READ_FILE_R1 --R2 SHORT_READ_FILE_R2 --threads 8
 ```
 Optional parameters are described further down.
 
@@ -104,27 +104,27 @@ Here are the use cases of `nphase partial`:
 You have mapped long reads and a vcf file of your short reads:
 ```
 nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-               --vcf VCF_FILE --mappedLongReads MAPPED_LONG_READ_FILE
+               --vcf VCF_FILE --mappedLongReads MAPPED_LONG_READ_FILE --threads 8
 ```
 You have mapped long reads and mapped short reads, but not vcf:
 ```
 nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-               --mappedLongReads MAPPED_LONG_READ_FILE --mappedShortReads MAPPED_SHORT_READ_FILE
+               --mappedLongReads MAPPED_LONG_READ_FILE --mappedShortReads MAPPED_SHORT_READ_FILE --threads 8
 ```
 You have mapped long reads, but no mapped short reads and no vcf:
 ```
 nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-               --mappedLongReads MAPPED_LONG_READ_FILE --R1 SHORT_READ_FILE_R1 --R2 SHORT_READ_FILE_R2
+               --mappedLongReads MAPPED_LONG_READ_FILE --R1 SHORT_READ_FILE_R1 --R2 SHORT_READ_FILE_R2 --threads 8
 ```
 You have a short read vcf, but no mapped long reads:
 ```
 nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-               --vcf VCF_FILE --longReadPlatform {ont,pacbio}
+               --vcf VCF_FILE --longReadPlatform {ont,pacbio} --threads 8
 ```
 You have mapped short reads, but no mapped long reads and no vcf:
 ```
 nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE
-               --mappedShortReads MAPPED_SHORT_READ_FILE --longReadPlatform {ont,pacbio}
+               --mappedShortReads MAPPED_SHORT_READ_FILE --longReadPlatform {ont,pacbio} --threads 8
 ```
 
 # Phasing Parameters
