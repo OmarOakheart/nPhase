@@ -93,6 +93,23 @@ nphase algorithm --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_
 
 Optional parameters are described further down.
 
+### Outputs
+
+o One fastQ file per predicted haplotig in OUTPUT_FOLDER/Phased/FastQ/
+
+o Three plots in OUTPUT_FOLDER/Phased/Plots/:
+    o SAMPLE_NAME_minOvl_minSim_maxID_coverageVis.{png|svg|pdf}: Coverage of each haplotig plotted against your reference genome
+    o SAMPLE_NAME_minOvl_minSim_maxID_discordanceVis.{png|svg|pdf}: Violin plot for each haplotig showing the distribution of allele frequency within the haplotig. Values around 0.5 here are a sign that two distinct haplotypes were erroneously merged into one
+    o SAMPLE_NAME_minOvl_minSim_maxID_phasedVis.{png|svg|pdf}: Displays the haplotigs along the genome
+
+o Six tab-separated value (.tsv) files in OUTPUT_FOLDER/Phased/:
+    o SAMPLE_NAME_minOvl_minSim_maxID_variants.tsv: For each haplotig, the haplotig name, chromosome, position, base
+    o SAMPLE_NAME_minOvl_minSim_maxID_clusterReadNames.tsv: For each haplotig, the names of reads that comprise it
+    o SAMPLE_NAME_minOvl_minSim_maxID_phasedDataFull.tsv: For each haplotig, the position, chromosome, y position of each phased SNP. Raw data, not used to generate the phasedVis plot.
+    o SAMPLE_NAME_minOvl_minSim_maxID_discordanceVis.tsv: For each haplotig, the haplotig name, chromosome, position, base, frequency, coverage. Used to generate the discordanceVis plot.
+    o SAMPLE_NAME_minOvl_minSim_maxID_phasedDataSimple.tsv: For each haplotig, the start position, stop position, chromosome, y position. Used to generate the phasedVis plot.
+    o SAMPLE_NAME_minOvl_minSim_maxID_covVis.tsv: For each haplotig, the haplotig name, chromosome, 5kb window, mean coverage for the window
+
 # nphase partial
 
 Alternatively, if you already mapped your short reads to a reference, or your long reads, or already variant called your mapped short reads, you can try to use
@@ -223,7 +240,7 @@ required arguments:
 
 ### Paper
 
-[nPhase: An accurate and contiguous phasing method for polyploids](https://www.biorxiv.org/content/10.1101/2020.07.24.219105v1)
+[nPhase: An accurate and contiguous phasing method for polyploids](https://genomebiology.biomedcentral.com/articles/10.1186/s13059-021-02342-x/metrics)
 
 
 ### Presentations
