@@ -107,15 +107,23 @@ def nPhasePipeline(args):
     hetSNPVCFText=""
 
     SNPVCFFile=open(SNPVCFFilePath,"r")
+    firstFormat=True
     for line in SNPVCFFile:
         if "#" in line:
             hetSNPVCFText+=line
-        elif "AF=1.00" not in line:
-            line=line.strip("\n")
-            line=line.replace(";","\t")
-            line=line.split("\t")
-            line=[line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7]]
-            hetSNPVCFText+="\t".join(line)+"\n"
+        else:
+            if firstFormat:
+                format=line.split("\t")[8].split(":")
+                if "GT" in format:
+                    GTIndex=format.index("GT")
+                    firstFormat=False
+                else:
+                    print("GT not found in FORMAT column of vcf file, cannot identify heterozygous SNPs")
+                    exit(0)
+            GTData=line.split("\t")[9].split(":")[GTIndex]
+            nHaplotypes=len(set(GTData).difference({"|","/"}))
+            if nHaplotypes>1:
+                hetSNPVCFText+=line
 
     SNPVCFFile.close()
 
@@ -137,7 +145,7 @@ def nPhasePipeline(args):
     for line in shortReadPositionsOutputFile:
         if "#" in line:
             shortReadSNPsBedText+=line
-        elif "AF=1.00" not in line:
+        else:
             line=line.strip("\n")
             line=line.replace(":","\t")
             line=line.split("\t")
@@ -380,15 +388,23 @@ def partialPipeline(args):
     hetSNPVCFText=""
 
     SNPVCFFile=open(SNPVCFFilePath,"r")
+    firstFormat=True
     for line in SNPVCFFile:
         if "#" in line:
             hetSNPVCFText+=line
-        elif "AF=1.00" not in line:
-            line=line.strip("\n")
-            line=line.replace(";","\t")
-            line=line.split("\t")
-            line=[line[0],line[1],line[2],line[3],line[4],line[5],line[6],line[7]]
-            hetSNPVCFText+="\t".join(line)+"\n"
+        else:
+            if firstFormat:
+                format=line.split("\t")[8].split(":")
+                if "GT" in format:
+                    GTIndex=format.index("GT")
+                    firstFormat=False
+                else:
+                    print("GT not found in FORMAT column of vcf file, cannot identify heterozygous SNPs")
+                    exit(0)
+            GTData=line.split("\t")[9].split(":")[GTIndex]
+            nHaplotypes=len(set(GTData).difference({"|","/"}))
+            if nHaplotypes>1:
+                hetSNPVCFText+=line
 
     SNPVCFFile.close()
 
@@ -410,7 +426,7 @@ def partialPipeline(args):
     for line in shortReadPositionsOutputFile:
         if "#" in line:
             shortReadSNPsBedText+=line
-        elif "AF=1.00" not in line:
+        else:
             line=line.strip("\n")
             line=line.replace(":","\t")
             line=line.split("\t")
@@ -497,7 +513,7 @@ def cleaning(args):
 
 def main():
     parser=argparse.ArgumentParser(prog="nPhase",description='Full ploidy agnostic phasing pipeline',add_help=False)
-    parser.add_argument('--version',action='version',version='%(prog)s 1.1.3')
+    parser.add_argument('--version',action='version',version='%(prog)s 1.1.7')
 
     #CREATING SEPARATE MODES
     subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, 'nPhase' will only perform the phasing operation, 'partial' will only perform part of the pipeline, 'cleaning' will run automated cleaning steps on nPhase results",dest='command')
