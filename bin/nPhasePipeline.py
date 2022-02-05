@@ -513,7 +513,7 @@ def cleaning(args):
 
 def main():
     parser=argparse.ArgumentParser(prog="nPhase",description='Full ploidy agnostic phasing pipeline',add_help=False)
-    parser.add_argument('--version',action='version',version='%(prog)s 1.1.7')
+    parser.add_argument('--version',action='version',version='%(prog)s 1.1.8')
 
     #CREATING SEPARATE MODES
     subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, 'nPhase' will only perform the phasing operation, 'partial' will only perform part of the pipeline, 'cleaning' will run automated cleaning steps on nPhase results",dest='command')

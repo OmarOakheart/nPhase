@@ -235,12 +235,14 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
 
     for line in samLines: #For each sam record
         #Initializing a lot of things
+        sequence=line[9]
+        if sequence=="*": #Only seen this happen when the MAPQ is 0 for a secondary alignment
+            continue
         readName=line[0]
         ctgName=line[2]
         refPosition=int(line[3]) #SamFiles are already in 1-base
         MQ=int(line[4])
         cigar=line[5]
-        sequence=line[9]
         QLine=line[10]
         readPosition=0 #The base of readPosition is irrelevant, it starts at 0 because python lists are 0-based (sequence[0])
         lineBases=[]
