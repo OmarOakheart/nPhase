@@ -429,7 +429,7 @@ def getAvgFastQScore(fastQScoreStr):
     return avgScore
 
 def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,outputPath):
-    clusterStatsText=""
+    ##clusterStatsText=""
     haplotigReadDict={}
     haplotigReadNameFile=open(haplotigReadNameFilePath,"r")
     for line in haplotigReadNameFile:
@@ -446,7 +446,7 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     haplotigReadNameFile.close()
 
     longReadData={}
-    longReadMetaData={}
+    ##longReadMetaData={}
 
     try:
         longReadFastQFile=gzip.open(longReadFastQFilePath,"rt")
@@ -465,27 +465,31 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
             longReadData[readName]=[]
         else:
             if i%4==3:
-                longReadMetaData[readName]=getAvgFastQScore(line)
+                pass
+                ##longReadMetaData[readName]=getAvgFastQScore(line)
             longReadData[readName].append(line)
         i+=1
     longReadFastQFile.close()
 
     for haplotigName, reads in haplotigReadDict.items():
         haplotigFastQText=""
-        totalScore=0
+        ##totalScore=0
         for read in reads:
             read="@"+read
-            totalScore+=longReadMetaData[read]
-            readText=read+"\n"+"\n".join(longReadData[read])+"\n"
-            haplotigFastQText+=readText
-        clusterStatsText+=haplotigName+"\t"+str(len(set(reads)))+"\t"+str(round(totalScore/len(reads)))+"\n"
+            ##totalScore+=longReadMetaData[read]
+            try:
+                readText=read+"\n"+"\n".join(longReadData[read])+"\n"
+                haplotigFastQText+=readText
+            except:
+                pass
+        ##clusterStatsText+=haplotigName+"\t"+str(len(set(reads)))+"\t"+str(round(totalScore/len(reads)))+"\n"
         haplotigFile=gzip.open(outputPath+haplotigName+".fastq.gz",'wt')
         haplotigFile.write(haplotigFastQText)
         haplotigFile.close()
 
-    clusterStatsFile=open(outputPath+"clusterStats.tsv", 'w')
-    clusterStatsFile.write(clusterStatsText)
-    clusterStatsFile.close()
+    ##clusterStatsFile=open(outputPath+"clusterStats.tsv", 'w')
+    ##clusterStatsFile.write(clusterStatsText)
+    ##clusterStatsFile.close()
 
     return "Successfully generated phased FastQ files"
 

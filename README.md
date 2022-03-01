@@ -42,7 +42,7 @@ nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_refere
                 --output /path/to/outputFolder --threads 8
 ```
 
-Once you've phased your data, you can use our automated cleaning method on the raw results with the following command:
+Once you've phased your data, you can use our automated cleaning method on the raw results folder (`/path/to/outputFolder/Individual_1`) with the following command:
 
 
 

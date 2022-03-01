@@ -487,7 +487,10 @@ def partialPipeline(args):
 
     #Discordance
     simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
-    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    try:
+        nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    except:
+        print("nPhase was unable to automatically generate the discordance plot (likely due to memory issues), the raw data is available in the $prefix_discordanceVis.tsv file in the Phased folder.")
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
@@ -513,7 +516,7 @@ def cleaning(args):
 
 def main():
     parser=argparse.ArgumentParser(prog="nPhase",description='Full ploidy agnostic phasing pipeline',add_help=False)
-    parser.add_argument('--version',action='version',version='%(prog)s 1.1.8')
+    parser.add_argument('--version',action='version',version='%(prog)s 1.1.9')
 
     #CREATING SEPARATE MODES
     subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, 'nPhase' will only perform the phasing operation, 'partial' will only perform part of the pipeline, 'cleaning' will run automated cleaning steps on nPhase results",dest='command')
