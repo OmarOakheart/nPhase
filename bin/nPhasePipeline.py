@@ -199,7 +199,10 @@ def nPhasePipeline(args):
 
     #Discordance
     simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
-    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    try:
+        nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    except:
+        print("nPhase was unable to automatically generate the discordance plot (likely due to memory issues), the raw data is available in the $prefix_discordanceVis.tsv file in the Phased folder.")
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
@@ -261,7 +264,10 @@ def nPhaseAlgorithm(args):
 
     #Discordance
     simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
-    nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    try:
+        nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    except:
+        print("nPhase was unable to automatically generate the discordance plot (likely due to memory issues), the raw data is available in the $prefix_discordanceVis.tsv file in the Phased folder.")
 
     readmeText="\nPlot can be found at "+datavisFolderPath
     print(readmeText)
