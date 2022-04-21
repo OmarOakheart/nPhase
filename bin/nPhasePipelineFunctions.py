@@ -479,7 +479,6 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
 
     i=0
     j=0
-    putCounter=0
     readData=[]
     readDataBatch={}
     batchSize=2500
@@ -494,8 +493,6 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
                 if j>batchSize:
                     j=0
                     fastQReadQueue.put(readDataBatch)
-                    putCounter+=1
-                    print(putCounter*batchSize)
                     readDataBatch={}
             line=line.split()
             readName=line[0]
@@ -512,8 +509,6 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
                 readData.append(line)
         i+=1
     longReadFastQFile.close()
-
-    print(putCounter * batchSize + j)
 
     if readDataBatch!={}:
         fastQReadQueue.put(readDataBatch)
