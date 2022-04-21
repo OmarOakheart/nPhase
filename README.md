@@ -279,6 +279,8 @@ It is currently untested on pacbio data so if you have a pacbio dataset (with a 
 
 There is an example dataset on this github, in the example folder, which you can test nPhase on. It contains a reference sequence, short reads and long reads. The result should look like a triploid and it should run quickly.
 
+For significantly more exhaustive testing, please check out the [Phasing Toolkit repo](https://github.com/OmarOakheart/Phasing-Toolkit). You can use it to automatically perform benchmarks, compare nPhase to other polyploid phasing tools, calculate accuracy metrics on tests with ground truth datasets generated in the same way as described in the nPhase paper.
+
 # Contact me
 
 email: omaroakheart@gmail.com
