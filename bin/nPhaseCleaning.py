@@ -613,7 +613,6 @@ def makeVariantsFile(stitchedClusters, filePath):
     variantFile.write(variantFileText)
     variantFile.close()
 
-
 def makeClusterReadFile(stitchedClusters, filePath):
     variantFileText = ""
     for cluster, clusterData in stitchedClusters.items():

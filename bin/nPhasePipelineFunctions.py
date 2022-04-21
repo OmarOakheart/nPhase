@@ -7,6 +7,7 @@ import pandas as pd
 import matplotlib
 matplotlib.use('Agg')
 from plotnine import *
+import multiprocessing
 
 def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPlatform,threads):
     outputLog=""
@@ -212,100 +213,12 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
 
     samFile.close()
 
-    readDict={}
+    manager = multiprocessing.Manager()
 
-    for line in samLines:
-        if line[0] not in readDict:
-            readDict[line[0]]=[]
-        else:
-            i=1
-            b=False
-            while b==False:
-                if line[0]+"_"+str(i) not in readDict:
-                    readDict[line[0]+"_VCSTTP_"+str(i)]=[] #Very Clean Solution To This Problem
-                    line[0]=line[0]+"_VCSTTP_"+str(i)
-                    b=True
-                i+=1
+    readDict = manager.dict()
 
-    #For some stats
-    samSkips=0
-    allAlnPcts=[]
-
-    i=0
-
-    for line in samLines: #For each sam record
-        #Initializing a lot of things
-        sequence=line[9]
-        if sequence=="*": #Only seen this happen when the MAPQ is 0 for a secondary alignment
-            continue
-        readName=line[0]
-        ctgName=line[2]
-        refPosition=int(line[3]) #SamFiles are already in 1-base
-        MQ=int(line[4])
-        cigar=line[5]
-        QLine=line[10]
-        readPosition=0 #The base of readPosition is irrelevant, it starts at 0 because python lists are 0-based (sequence[0])
-        lineBases=[]
-        matchStart=False
-        averageScore=0
-        for Q in QLine:
-            try:
-                averageScore+=QScores[Q]
-            except:
-                QScores[Q]=ord(Q)-33
-                averageScore+=QScores[Q]
-        averageScore=int(averageScore/len(QLine))
-        #
-        #Okay so now we evaluate the cigar string and just slide down the SEQ and the reference simultaneously
-        for match in re.finditer(cigarPartRE, cigar):
-            n=int(match.group(1))
-            alignmentType=match.group(2)
-            if alignmentType=="S":
-                readPosition+=n
-            elif alignmentType in ["M", "=", "X"]:
-                matchStart=True
-                matches=[] #So, we know there might be some mismatches in here
-                for x in range(n):
-                    matches.append((refPosition,sequence[readPosition]))
-                    refPosition+=1
-                    readPosition+=1
-                for match in matches:
-                    pos=match[0]
-                    base=match[1]
-                    posName=ctgName+":"+str(pos)
-                    if posName in variantSet:
-                        lineBases.append(posName+"="+base) #+"_"+str(QScores[Q])+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
-            elif alignmentType=="I":
-                insertionSequence=""
-                for x in range(n):
-                    insertionSequence+=sequence[readPosition]
-                    readPosition+=1
-                pos=refPosition
-                posName=ctgName+":"+str(pos)
-                if posName in variantSet:
-                    #lineBases.append(posName+"="+insertionSequence) #+"_"+str(insertionScore)+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
-                    pass #WE IGNORE THESE FOR NOW
-            elif alignmentType=="D":
-                if matchStart:
-                    for x in range(n):
-                        matches.append((refPosition,"D",averageScore,averageScore))
-                        refPosition+=1
-                    for match in matches:
-                        pos=match[0]
-                        base=match[1] #This will automatically be "D" for deletion
-                        posName=ctgName+":"+str(pos)
-                        if posName in variantSet:
-                            #lineBases.append(posName+"="+base) #+"_"+str(Q)+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
-                            pass
-        readDict[readName]=lineBases
-        i+=1
-        if i%(int(len(samLines)/100))==0:
-            print(int(i/len(samLines)*100)+1,"%")
-
-    #skippedPct=(samSkips/len(samLines))*100
-
-    #print("There were",samSkips,"reads skipped because their alignments were smaller than the",minAln*100,"% minimum.\nThat's",round(skippedPct,2),"% of alignments in the sam file.")
-    #You can do something with allAlnPcts in order to determine if you want to change that percentage for whatever reason.
+    with multiprocessing.Pool(processes=8) as pool: #Consider batching lines
+        pool.map(assignLongReadToSNPsParallelHelper, [[line,readDict,QScores,variantSet] for line in samLines])
 
     outputText=""
 
@@ -319,6 +232,92 @@ def assignLongReadToSNPs(samPath,bedPath,referencePath,minQ,minMQ,minAln,outputP
 
     return "Reduced long reads to heterozygous SNPs based on short read information"
 
+def assignLongReadToSNPsParallelHelper(variables):
+    line=variables[0]
+    rD=variables[1]
+    QScores=variables[2]
+    variantSet=variables[3]
+    assignLongReadToSNPsParallel(line,rD,QScores,variantSet)
+
+def assignLongReadToSNPsParallel(line,readDict,QScores,variantSet):
+    cigarPartRE = '(\d+)([DHIMNPSX=])'
+    if line[0] not in readDict:
+        readDict[line[0]]=[]
+    else:
+        i=1
+        b=False
+        while b==False:
+            if line[0]+"_"+str(i) not in readDict:
+                readDict[line[0]+"_VCSTTP_"+str(i)]=[] #Very Clean Solution To This Problem
+                line[0]=line[0]+"_VCSTTP_"+str(i)
+                b=True
+            i+=1
+
+    #Initializing a lot of things
+    sequence=line[9]
+    if sequence=="*": #Only seen this happen when the MAPQ is 0 for a secondary alignment
+        return
+    readName=line[0]
+    ctgName=line[2]
+    refPosition=int(line[3]) #SamFiles are already in 1-base
+    MQ=int(line[4])
+    cigar=line[5]
+    QLine=line[10]
+    readPosition=0 #The base of readPosition is irrelevant, it starts at 0 because python lists are 0-based (sequence[0])
+    lineBases=[]
+    matchStart=False
+    averageScore=0
+    for Q in QLine:
+        try:
+            averageScore+=QScores[Q]
+        except:
+            QScores[Q]=ord(Q)-33
+            averageScore+=QScores[Q]
+    averageScore=int(averageScore/len(QLine))
+    #
+    #Okay so now we evaluate the cigar string and just slide down the SEQ and the reference simultaneously
+    for match in re.finditer(cigarPartRE, cigar):
+        n=int(match.group(1))
+        alignmentType=match.group(2)
+        if alignmentType=="S":
+            readPosition+=n
+        elif alignmentType in ["M", "=", "X"]:
+            matchStart=True
+            matches=[] #So, we know there might be some mismatches in here
+            for x in range(n):
+                matches.append((refPosition,sequence[readPosition]))
+                refPosition+=1
+                readPosition+=1
+            for match in matches:
+                pos=match[0]
+                base=match[1]
+                posName=ctgName+":"+str(pos)
+                if posName in variantSet:
+                    lineBases.append(posName+"="+base) #+"_"+str(QScores[Q])+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
+        elif alignmentType=="I":
+            insertionSequence=""
+            for x in range(n):
+                insertionSequence+=sequence[readPosition]
+                readPosition+=1
+            pos=refPosition
+            posName=ctgName+":"+str(pos)
+            if posName in variantSet:
+                #lineBases.append(posName+"="+insertionSequence) #+"_"+str(insertionScore)+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
+                pass #WE IGNORE THESE FOR NOW
+        elif alignmentType=="D":
+            if matchStart:
+                for x in range(n):
+                    matches.append((refPosition,"D",averageScore,averageScore))
+                    refPosition+=1
+                for match in matches:
+                    pos=match[0]
+                    base=match[1] #This will automatically be "D" for deletion
+                    posName=ctgName+":"+str(pos)
+                    if posName in variantSet:
+                        #lineBases.append(posName+"="+base) #+"_"+str(Q)+"-"+str(averageScore)) #For debugging/info about which parameters can predict good reads
+                        pass #WE IGNORE THESE FOR NOW
+    readDict[readName]=lineBases
+
 def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile):
     longReadFile=open(longReadFilePath,"r")
 
@@ -330,30 +329,29 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
     longReadFile.close()
 
     contextDepths={}
-    distance=2
+    batchSize=3000
+    batches=[]
+    currentBatch=[]
+    i=0
+    for longRead in longReads:
+        currentBatch.append(longRead)
+        i+=1
+        if i>batchSize:
+            batches.append(currentBatch)
+            currentBatch=[]
+            i=0
 
-    for line in longReads:
-        SNPs=line[1:]
-        for SNP in SNPs:
-            i=SNPs.index(SNP)
-            itemList=[]
-            for j in range(i-distance,i+distance+1):
-                if j>=0 and j<len(SNPs):
-                    itemList.append(SNPs[j])
-            if SNP not in contextDepths:
-                contextDepths[SNP]={frozenset(itemList):0}
-            else:
-                contextDepths[SNP][frozenset(itemList)]=0
+    if currentBatch!=[]:
+        batches.append(currentBatch)
 
-    for line in longReads:
-        SNPs=line[1:]
-        for SNP in SNPs:
-            i=SNPs.index(SNP)
-            itemList=[]
-            for j in range(i-distance,i+distance+1):
-                if j>=0 and j<len(SNPs):
-                    itemList.append(SNPs[j])
-            contextDepths[SNP][frozenset(itemList)]+=1
+    with multiprocessing.Pool(processes=8) as pool:
+        contextDepthDicts=pool.map(updateContextDepths, [batchData for batchData in batches])
+        for contextDepthDict in contextDepthDicts:
+            for SNP, SNPContexts in contextDepthDict.items():
+                contextDepths.setdefault(SNP,{})
+                for SNPContext, SNPContextCount in SNPContexts.items():
+                    contextDepths[SNP].setdefault(SNPContext,0)
+                    contextDepths[SNP][SNPContext]+=SNPContextCount
 
     contextText=""
 
@@ -417,6 +415,24 @@ def longReadValidation(longReadFilePath,minCov,minRatio,minTrioCov,validatedSNPA
 
     return "Pre-processed long reads and generated context depth file"
 
+def updateContextDepths(longReadBatch):
+    localContextDepths={}
+    distance=2
+    for longRead in longReadBatch:
+        SNPs=longRead[1:]
+        for SNP in SNPs:
+            i=SNPs.index(SNP)
+            itemList=[]
+            for j in range(i-distance,i+distance+1):
+                if j>=0 and j<len(SNPs):
+                    itemList.append(SNPs[j])
+            if SNP!='':
+                frozenList=frozenset(itemList)
+                localContextDepths.setdefault(SNP,{})
+                localContextDepths[SNP].setdefault(frozenList,0)
+                localContextDepths[SNP][frozenList]+=1
+    return localContextDepths
+
 def getAvgFastQScore(fastQScoreStr):
     fastQScoreStr=fastQScoreStr.strip()
     totalScore=0
@@ -428,24 +444,23 @@ def getAvgFastQScore(fastQScoreStr):
     avgScore=totalScore/len(fastQScoreStr)
     return avgScore
 
-def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,outputPath):
+def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,outputPath): #Parallelize in a way that can save memory
     ##clusterStatsText=""
     haplotigReadDict={}
+    allAllowedReads=set()
     haplotigReadNameFile=open(haplotigReadNameFilePath,"r")
     for line in haplotigReadNameFile:
         line=line.strip("\n").split("\t")
         haplotigName=line[0]
-        readName=line[1]
+        readName="@"+line[1]
         readName=readName.split("_VCSTTP_")[0]
-        if haplotigName not in haplotigReadDict:
-            haplotigReadDict[haplotigName]=[readName]
-        else:
-            if readName not in haplotigReadDict[haplotigName]:
-                haplotigReadDict[haplotigName].append(readName)
+        haplotigReadDict.setdefault(readName,set())
+        haplotigReadDict[readName].add(haplotigName)
+        allAllowedReads.add(readName)
 
     haplotigReadNameFile.close()
 
-    longReadData={}
+
     ##longReadMetaData={}
 
     try:
@@ -456,42 +471,77 @@ def generateLongReadFastQFiles(haplotigReadNameFilePath,longReadFastQFilePath,ou
     except gzip.BadGzipFile:
         longReadFastQFile=open(longReadFastQFilePath,"r")
 
+    fastQReadQueue = multiprocessing.Queue()
+
+    fastQWriter_p = multiprocessing.Process(target=fastQWriter, args=((outputPath),(fastQReadQueue),))
+    fastQWriter_p.daemon = True
+    fastQWriter_p.start()
+
     i=0
+    j=0
+    putCounter=0
+    readData=[]
+    readDataBatch={}
+    batchSize=2500
     for line in longReadFastQFile:
         line=line.strip("\n")
         if i%4==0:
+            if readData!=[]:
+                for haplotigName in haplotigNames:
+                    readDataBatch.setdefault(haplotigName,[])
+                    readDataBatch[haplotigName].append(readData)
+                    j+=1
+                if j>batchSize:
+                    j=0
+                    fastQReadQueue.put(readDataBatch)
+                    putCounter+=1
+                    print(putCounter*batchSize)
+                    readDataBatch={}
             line=line.split()
             readName=line[0]
-            longReadData[readName]=[]
+            haplotigNames=[]
+            readData=[]
+            if readName in allAllowedReads:
+                for haplotigName in haplotigReadDict[readName]:
+                    haplotigNames.append(haplotigName)
+                readData=[readName]
         else:
-            if i%4==3:
-                pass
-                ##longReadMetaData[readName]=getAvgFastQScore(line)
-            longReadData[readName].append(line)
+            if readName in allAllowedReads:
+                ##if i%4==3:
+                    ##longReadMetaData[readName]=getAvgFastQScore(line)
+                readData.append(line)
         i+=1
     longReadFastQFile.close()
 
-    for haplotigName, reads in haplotigReadDict.items():
-        haplotigFastQText=""
-        ##totalScore=0
-        for read in reads:
-            read="@"+read
-            ##totalScore+=longReadMetaData[read]
-            try:
-                readText=read+"\n"+"\n".join(longReadData[read])+"\n"
-                haplotigFastQText+=readText
-            except:
-                pass
-        ##clusterStatsText+=haplotigName+"\t"+str(len(set(reads)))+"\t"+str(round(totalScore/len(reads)))+"\n"
-        haplotigFile=gzip.open(outputPath+haplotigName+".fastq.gz",'wt')
-        haplotigFile.write(haplotigFastQText)
-        haplotigFile.close()
+    print(putCounter * batchSize + j)
+
+    if readDataBatch!={}:
+        fastQReadQueue.put(readDataBatch)
+
+    fastQReadQueue.put("end")
+
+    fastQWriter_p.join()
 
     ##clusterStatsFile=open(outputPath+"clusterStats.tsv", 'w')
     ##clusterStatsFile.write(clusterStatsText)
     ##clusterStatsFile.close()
 
     return "Successfully generated phased FastQ files"
+
+def fastQWriter(outputPath,queue):
+    while True:
+        readDataBatch=queue.get()
+        if readDataBatch == "end":
+            return
+        for haplotigName, haplotigReads in readDataBatch.items():
+            haplotigFastQText=""
+            for readData in haplotigReads:
+                readName=readData[0]
+                readString=readName+"\n"+"\n".join(readData[1:])+"\n"
+                haplotigFastQText+=readString
+            haplotigFile=gzip.open(outputPath+haplotigName+".fastq.gz",'at')
+            haplotigFile.write(haplotigFastQText)
+            haplotigFile.close()
 
 def loadFile(filePath):
         openFile=open(filePath,"r")
@@ -570,21 +620,26 @@ def generateCoverageVis(dataVisPath,outPath):
 
     return "Generated coverage plots"
 
-def generateDiscordanceVis(dataVisPath,outPath):
+def generateDiscordanceVis(dataVisPath,outPath): #This function is very slow with plotnine for some reason. Should replace this in the long run.
     #Figure out how supported (as a %) each base is for each position in the cluster
 
-    outputPNG=outPath+"discordanceVis.png"
-    outputPDF=outPath+"discordanceVis.pdf"
+    #Takes several minutes to output each graph and violin plots have an unreasonable memory constraint using plotnine.
+    #TODO: Fix this
+    #TEMP: Moved this to very last part of the pipeline so that everything else can be generated smoothly first.
+    #TEMP: Commented out two of the less useful file formats to save time.
+
+    #outputPNG=outPath+"discordanceVis.png"
+    #outputPDF=outPath+"discordanceVis.pdf"
     outputSVG=outPath+"discordanceVis.svg"
 
     tbl=pd.read_csv(dataVisPath,sep="\t",header=None,comment="#")
     tbl.columns=["cluster","chr","position","base","frequency","coverage"]
 
-    g=(ggplot(tbl,aes(y="frequency",x='cluster'))+geom_violin(scale="width")+facet_wrap("~chr",scales="free")+coord_flip()+ylim(0,1)+xlab("Cluster name")+ylab("Allele frequency (%)")+ggtitle("Allele frequency by cluster (all clusters have same max width)")+theme(subplots_adjust={'wspace': 0.25}))
+    g=(ggplot(tbl,aes(y="frequency",x='cluster'))+facet_wrap("~chr",scales="free")+geom_violin(scale="width")+coord_flip()+ylim(0,1)+xlab("Cluster name")+ylab("Allele frequency (%)")+ggtitle("Allele frequency by cluster (all clusters have same max width)")+theme(subplots_adjust={'wspace': 0.25}))
 
-    ggsave(g,filename=outputPNG,width=18,height=10)
+    #ggsave(g,filename=outputPNG,width=18,height=10)
+    #ggsave(g,filename=outputPDF,width=18,height=10)
     ggsave(g,filename=outputSVG,width=18,height=10)
-    ggsave(g,filename=outputPDF,width=18,height=10)
 
     return "Generated discordance plots"
 

@@ -178,7 +178,7 @@ def nPhasePipeline(args):
     nPhaseFunctions.longReadValidation(longReadPositionNTFile,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile)
 
     #Run everything through nPhase
-    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID,args.nPairs,int(args.threads))
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
@@ -197,18 +197,6 @@ def nPhasePipeline(args):
     simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_covVis.tsv")
     nPhaseFunctions.generateCoverageVis(simpleOutPath,datavisPath)
 
-    #Discordance
-    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
-    try:
-        nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
-    except:
-        print("nPhase was unable to automatically generate the discordance plot (likely due to memory issues), the raw data is available in the $prefix_discordanceVis.tsv file in the Phased folder.")
-
-    readmeText="\nPlot can be found at "+datavisFolderPath
-    print(readmeText)
-    updateLog(readmePath,readmeText)
-
-
     #Generate FastQ Files
     haplotigReadNameFile=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_clusterReadNames.tsv")
     fastQFilePrefix=os.path.join(phasedFastqPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_")
@@ -221,9 +209,18 @@ def nPhasePipeline(args):
 
     print("You can consult the readme at "+readmePath+" if you want a bit of guidance about your results. Please raise any issues on https://github.com/nPhasePipeline/nPhase")
 
-    return 0
+    #Discordance
+    simpleOutPath=os.path.join(phasedPath,args.strainName+"_"+str(args.minOvl)+"_"+str(args.minSim)+"_"+str(args.maxID)+"_"+str(args.minLen)+"_discordanceVis.tsv")
+    try:
+        nPhaseFunctions.generateDiscordanceVis(simpleOutPath,datavisPath)
+    except:
+        print("nPhase was unable to automatically generate the discordance plot (plotnine seems to have issues generating violin plots), the raw data is available in the $prefix_discordanceVis.tsv file in the Phased folder.")
 
-    ####################
+    readmeText="\nPlot can be found at "+datavisFolderPath
+    print(readmeText)
+    updateLog(readmePath,readmeText)
+
+    return 0
 
 
 def nPhaseAlgorithm(args):
@@ -243,7 +240,7 @@ def nPhaseAlgorithm(args):
     fullLogPath=os.path.join(basePath,"Logs","fullLog.txt")
 
     #Run everything through nPhase
-    phaseTool.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(args.validatedSNPAssignmentsFile,args.strainName,args.contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID,args.nPairs,int(args.threads))
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
@@ -468,7 +465,7 @@ def partialPipeline(args):
     nPhaseFunctions.longReadValidation(longReadPositionNTFile,minCov,minRatio,minTrioCov,validatedSNPAssignmentsFile,contextDepthsFile)
 
     #Run everything through nPhase
-    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID)
+    phaseTool.nPhase(validatedSNPAssignmentsFile,args.strainName,contextDepthsFile,phasedPath,basePath,args.reference,args.minSim,args.minOvl,args.minLen,args.maxID,args.nPairs,int(args.threads))
 
     readmeText="\nPhased files can be found at "+phasedPath+"\nThe *_variants.tsv file contains information on the consensus heterozygous variants present in each predicted haplotig.\nThe *_clusterReadNames.tsv file contains information on the reads which comprise each cluster."
     print(readmeText)
@@ -522,7 +519,7 @@ def cleaning(args):
 
 def main():
     parser=argparse.ArgumentParser(prog="nPhase",description='Full ploidy agnostic phasing pipeline',add_help=False)
-    parser.add_argument('--version',action='version',version='%(prog)s 1.1.10')
+    parser.add_argument('--version',action='version',version='%(prog)s 1.2.0')
 
     #CREATING SEPARATE MODES
     subparsers = parser.add_subparsers(help="selecting 'pipeline' will run through all of the steps, 'nPhase' will only perform the phasing operation, 'partial' will only perform part of the pipeline, 'cleaning' will run automated cleaning steps on nPhase results",dest='command')
@@ -549,10 +546,12 @@ def main():
     required_a.add_argument('--longReadPlatform',required=True, dest='longReadPlatform',choices=['ont','pacbio'],help="Long read platform, must be 'ont' or 'pacbio'")
     required_a.add_argument('--R1',required=True, dest='shortReadFile_R1',help='Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz')
     required_a.add_argument('--R2',required=True, dest='shortReadFile_R2',help='Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz')
+    required_a.add_argument('--nPairs',dest='nPairs',type=int,nargs="?",default=1,help='Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1')
 
     #NPHASE SPECIFIC ARGUMENTS
     required_b.add_argument('--contextDepth',required=True, dest='contextDepthsFile',help='Path to context depths file, ex: /home/phased/Individual_1/Overlaps/Individual_1.contextDepths.tsv')
     required_b.add_argument('--processedLongReads',required=True, dest='validatedSNPAssignmentsFile',help='Path to validated long read SNPs, ex: /home/phased/Individual_1/VariantCalls/longReads/Individual_1.hetPositions.SNPxLongReads.validated.tsv')
+    required_b.add_argument('--nPairs',dest='nPairs',type=int,nargs="?",default=1,help='Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1')
 
     #PARTIAL PIPELINE SPECIFIC ARGUMENTS
     required_c.add_argument('--mappedShortReads', dest='mappedShortReads', default="noMapped",help='Path to mapped, sorted short read file in BAM format, ex: /home/phased/Individual_1/Mapped/shortReads/Individual_1.final.bam')
@@ -561,6 +560,7 @@ def main():
     required_c.add_argument('--longReadPlatform', dest='longReadPlatform',default="noLRMapping",choices=['ont','pacbio'],help="Long read platform, must be 'ont' or 'pacbio'")
     required_c.add_argument('--R1', dest='shortReadFile_R1',default="noSRMapping",help='Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz')
     required_c.add_argument('--R2', dest='shortReadFile_R2',default="noSRMapping",help='Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz')
+    required_c.add_argument('--nPairs',dest='nPairs',type=int,nargs="?",default=1,help='Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1')
 
     #CLEANING SPECIFIC ARGUMENTS
     required_Cleaning.add_argument('--resultFolder',required=True,dest='phasingResult',help='Path to output folder, ex: /home/nphaseResults/Individual_1/')

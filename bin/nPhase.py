@@ -4,8 +4,10 @@ from itertools import combinations
 import sys
 import sortedcontainers
 import bin.nPhasePipelineFunctions as nPhaseFunctions
+import multiprocessing
 
-def identity(readIDict,clusterAID,clusterBID,commonPositions):
+
+def identity(clusterAID,clusterBID,commonPositions):
     allBaseDict={}
     for position in commonPositions:
         baseA=clusterAID[position]
@@ -31,7 +33,7 @@ def identityChangeBool(clusterID,mergedClusterID,commonPositions,maxID): #Penali
     allSeqNumbers=0
     if len(commonPositions)==0: #I don't like having this here, but necessary to hack the final stitching, to clean up later. Is it still necessary?
         return False
-    for position in commonPositions:
+    for position in commonPositions: #Can be parallelized
         demographics=clusterID[position]
         bestDemo=max(demographics["demo"].values())
         allSeqNumbers+=mergedClusterID[position]["stats"]["N"]
@@ -49,17 +51,16 @@ def identityChangeBool(clusterID,mergedClusterID,commonPositions,maxID): #Penali
     else:
         return False
 
-def identityTheftBool(positionsA,positionsB,clusterA,clusterB,consensusA,consensusB,clusterAID,clusterBID,contextDepths,readIDict,maxID): #There are two possible ways to do this, either by discouraging dissidence, or deposition
+def identityTheftBool(positionsA,positionsB,clusterAID,clusterBID,maxID): #There are two possible ways to do this, either by discouraging dissidence, or deposition
     #This is the dissidence mode. Deposition mode would take into account only successful actions against established bases (much more aggressive clustering).
     commonPositions=positionsA&positionsB
-    mergedClusterID=identity(readIDict,clusterAID,clusterBID,commonPositions)
-    AChanges=identityChangeBool(clusterAID,mergedClusterID,commonPositions,maxID)
+    mergedClusterID=identity(clusterAID,clusterBID,commonPositions)
     if identityChangeBool(clusterAID,mergedClusterID,commonPositions,maxID) and identityChangeBool(clusterBID,mergedClusterID,commonPositions,maxID):
         return True
     else:
         return False
 
-def consensus(clusterID,contextDepths):
+def consensus(clusterID):
     consensus=set()
     for position in clusterID.keys():
         highestPct=max(clusterID[position]["demo"].values())
@@ -89,12 +90,11 @@ def consensusInitializer(sequenceList,contextDepths):
                 consensus.add(base+"="+baseNt)
     return frozenset(consensus)
 
-def bestTwo(sequences,similarityIndex,minSim,contextDepths,maxID,readIDict,bannedClusterNames):
-    bestCouple=[]
-    badCombinations=[]
-    maxLen=0
+def nBestPairs(sequences,similarityIndex,minSim,maxID,bannedClusterNames,nPairs):
     indx=0
     indexes=[]
+    nBest = []
+    bannedOverlaps = set()
     for combination in reversed(similarityIndex):
         indx-=1
         nameA=combination[2]
@@ -102,17 +102,21 @@ def bestTwo(sequences,similarityIndex,minSim,contextDepths,maxID,readIDict,banne
         if nameA in bannedClusterNames or nameB in bannedClusterNames:
             indexes.append(indx)
         else:
-            cacheA=sequences[combination[2]]
-            cacheB=sequences[combination[3]]
-            similarity=combination[0]
-            if similarity>=minSim:
-                if not identityTheftBool(cacheA["positions"],cacheB["positions"],cacheA["names"],cacheB["names"],cacheA["consensus"],cacheB["consensus"],cacheA["clusterID"],cacheB["clusterID"],contextDepths,readIDict,maxID):
-                    return (combination[2],combination[3]),indexes
-                else:
-                    indexes.append(indx)
-            elif similarity<minSim:
-                break
-    return [],indexes
+            if combination[2] not in bannedOverlaps and combination[3] not in bannedOverlaps:
+                cacheA=sequences[combination[2]]
+                cacheB=sequences[combination[3]]
+                similarity=combination[0]
+                if similarity>=minSim:
+                    if not identityTheftBool(cacheA["positions"],cacheB["positions"],cacheA["clusterID"],cacheB["clusterID"],maxID):
+                        nBest.append([combination[2], combination[3]])
+                        bannedOverlaps.update(cacheA["overlaps"], cacheB["overlaps"])
+                        if len(nBest)==nPairs:
+                            return nBest, indexes
+                    else:
+                        indexes.append(indx)
+                elif similarity<minSim:
+                    pass
+    return nBest,indexes
 
 def getSimilarity(consensusA,consensusB,commonPos,minOvl,minSim):
     if len(consensusA)<len(consensusB):
@@ -152,22 +156,6 @@ def initializeCache(readIDict,name,contextDepths):
         i+=1
     return cache
 
-def fillCache(cache,minOvl,minSim):
-    for combination in combinations(list(cache.keys()),2):
-        cacheA=cache[combination[0]]
-        cacheB=cache[combination[1]]
-        commonPos=cacheA["positions"]&cacheB["positions"]
-        if len(commonPos)>0:
-            cacheA["overlaps"].add(combination[1])
-            cacheB["overlaps"].add(combination[0])
-            similarity=getSimilarity(cacheA["consensus"],cacheB["consensus"],commonPos,minOvl,minSim)
-            if similarity>=minSim:
-                if len(cacheA["consensus"])<len(cacheB["consensus"]):
-                    cacheA["similarities"][combination[1]]=similarity
-                else:
-                    cacheB["similarities"][combination[0]]=similarity
-    return cache
-
 def generateSimilarityIndex(cache):
     similarityIndex=sortedcontainers.SortedList()
     for simCluster in cache.keys():
@@ -176,71 +164,178 @@ def generateSimilarityIndex(cache):
             similarityIndex.add([score,len(similarPositions),simCluster,combination])
     return similarityIndex
 
-def clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths):
+def cacheFiller(queue,outQueue,minOvl,minSim):
+    localCache={}
+    while True:
+        combinationBatch=queue.get()
+        if combinationBatch == "end":
+            outQueue.put(localCache)
+            return
+        for combination in combinationBatch:
+            localCache.setdefault(combination[0], {"overlaps": set(), "similarities": {}})
+            localCache.setdefault(combination[1], {"overlaps": set(), "similarities": {}})
+            cacheKey = combination[0]
+            otherKey = combination[1]
+            cacheA = cachedSimilarities[cacheKey]
+            cacheB = cachedSimilarities[otherKey]
+            commonPos = cacheA["positions"] & cacheB["positions"]
+            if len(commonPos) > 0:
+                localCache[cacheKey]["overlaps"].add(otherKey)
+                localCache[otherKey]["overlaps"].add(cacheKey)
+                similarity = getSimilarity(cacheA["consensus"], cacheB["consensus"], commonPos, minOvl, minSim)
+                if similarity >= minSim:
+                    if len(cacheA["consensus"]) < len(cacheB["consensus"]):
+                        localCache[cacheKey]["similarities"][otherKey] = similarity
+                    else:
+                        localCache[otherKey]["similarities"][cacheKey] = similarity
+
+def startCacheFillers(queue, outQueue, cachedSimilarityQueue, cachedSimilarities, minOvl, minSim, threadNumber):
+    allProcesses = list()
+    for thread in range(0, threadNumber-1):
+        cacheFiller_p = multiprocessing.Process(target=cacheFiller, args=((queue),(outQueue),(minOvl),(minSim),))
+        cacheFiller_p.daemon = True
+        cacheFiller_p.start()
+        allProcesses.append(cacheFiller_p)
+    cacheMerger_p=multiprocessing.Process(target=cacheMerger, args=((outQueue),(cachedSimilarityQueue),(cachedSimilarities),))
+    cacheMerger_p.daemon = True
+    cacheMerger_p.start()
+    allProcesses.append(cacheMerger_p)
+
+    return allProcesses
+
+def cacheMerger(outQueue,cachedSimilarityQueue,cachedSimilarities):
+    while True:
+        localDict = outQueue.get()
+        if localDict=="end":
+            cachedSimilarityQueue.put(cachedSimilarities)
+            return
+        for cacheName in localDict.keys():
+            cachedSimilarities[cacheName]["overlaps"].update(localDict[cacheName]["overlaps"])
+            for otherCache, similarity in localDict[cacheName]["similarities"].items():
+                cachedSimilarities[cacheName]["similarities"][otherCache] = similarity
+
+def clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths,nPairs,threadNumber):
     prevLen=0
     allReadIDict={}
     allReadIDict.update(readIDict)
     #Initializing cachedCluster
     print("Initializing cachedCluster")
+
+    global cachedSimilarities
     cachedSimilarities=initializeCache(readIDict,"cluster",contextDepths)
+
     #Filling cachedCluster with similarity info
     print("Filling cachedCluster with similarity information")
-    cachedSimilarities=fillCache(cachedSimilarities,minOvl,minSim)
+
+    batchSize=50000
+
+    #Create a queue for all the combinations
+    combinationQueue = multiprocessing.Queue(maxsize=3*threadNumber)
+    localSimilarityDictQueue = multiprocessing.Queue()
+    cachedSimilarityQueue=multiprocessing.Queue()
+
+    #Start the cache filling processes up before filling up the queue
+    allProcesses=startCacheFillers(combinationQueue, localSimilarityDictQueue, cachedSimilarityQueue, cachedSimilarities, minOvl, minSim, threadNumber)
+    allCacheFillers=allProcesses[0:-1]
+    cacheMergerProcess=allProcesses[-1]
+
+
+    #Fill up the queue with combinations
+    currentBatch=[]
+    i=0
+    for combination in combinations(cachedSimilarities.keys(),2):
+        currentBatch.append(combination)
+        if len(currentBatch)>batchSize:
+            combinationQueue.put(currentBatch)
+            i+=1
+            currentBatch=[]
+
+    #Fill the queue with end signals
+    for thread in range(0, threadNumber):
+        combinationQueue.put("end")
+
+    #Be sure to end all processes
+    for cacheFiller in allCacheFillers:
+        cacheFiller.join()
+
+    localSimilarityDictQueue.put("end")
+
+    cachedSimilarities=cachedSimilarityQueue.get()
+
+    cacheMergerProcess.join()
+
     print("Preparing initial similarity index")
     bannedClusterNames=set()
     similarityIndex=generateSimilarityIndex(cachedSimilarities)
     print("Starting clustering loop ("+str(len(cachedSimilarities.keys()))+" sequences)")
-    chrSizes=len(cachedSimilarities.keys())
     i=0
+    #Parallelizing nPhase is very difficult because we cannot create processes with shared access to the cachedSimilarities dict in python.
+    #Python can't yet take advantage of Copy On Write optimizations because accessing an object increases its refcount, which counts as a "write".
+    #Therefore python is, in practice, Copy On Read, and therefore parallelization requires sending the updated cachedSimilarities dict to processes.
+    #Sending such a large dict is prohibitively slow and ruins any improvements we might get from parallelization.
+    #Future versions of python may solve this issue, but it seems doubtful. Maybe there's a different data structure I could be using.
+    #If you're reading this and have any ideas, send me an email at omaroakheart@gmail.com
+    #For more info on python's Copy On Read behavior look up how Instagram circumvented this problem by compiling their own custom version of CPython.
+    #
+    #Given the impossibility of true parallelization, I decided to at least include an optional heuristic:
+    #Allow nPhase to merge more than one cluster per iterative loop.
+    #Each iterative loop: Merge together the n (nPairs) non-overlapping best matches.
+    #It has a low negative effect on accuracy and low positive effect on runtime in my limited testing.
+    #Testing the effect of this parameters on accuracy, contiguity and runtime on large genomes is needed.
+    #If you're interested in this, check out my other repo: https://github.com/OmarOakheart/Phasing-Toolkit
     while len(cachedSimilarities.keys())!=prevLen:
         prevLen=len(cachedSimilarities.keys())
-        pair,indexes=bestTwo(cachedSimilarities,similarityIndex,minSim,contextDepths,maxID,allReadIDict,bannedClusterNames)
-        bannedClusterNames.update(pair)
+        pairs,indexes=nBestPairs(cachedSimilarities,similarityIndex,minSim,maxID,bannedClusterNames,nPairs)
         for indx in reversed(indexes):
             similarityIndex.pop(indx)
-        if pair!=[]:
-            first=pair[0]
-            second=pair[1]
-            newName="mergedCluster_"+str(i)
-            newNames=cachedSimilarities[first]["names"]|cachedSimilarities[second]["names"]
-            newCluster=cachedSimilarities[first]["cluster"]|cachedSimilarities[second]["cluster"]
-            commonPositions=set([x.split("=")[0] for x in cachedSimilarities[first]["consensus"]])&set([x.split("=")[0] for x in cachedSimilarities[second]["consensus"]])
-            newClusterID=identity(allReadIDict,cachedSimilarities[first]["clusterID"],cachedSimilarities[second]["clusterID"],commonPositions)
-            newOverlaps=cachedSimilarities[first]["overlaps"]|cachedSimilarities[second]["overlaps"]
-            newOverlaps.remove(first)
-            newOverlaps.remove(second)
-            for overlap in newOverlaps:
-                cachedSimilarities[overlap]["overlaps"].add(newName)
-            newConsensus=consensus(newClusterID,contextDepths)
-            newSNPPositions=set([SNP.split("=")[0] for SNP in newConsensus])
-            newCache={"names":newNames,"cluster":newCluster,"clusterID":newClusterID,"consensus":newConsensus,"positions":newSNPPositions,"similarities":{},"overlaps":newOverlaps}
-            del cachedSimilarities[first]
-            del cachedSimilarities[second]
-            for cache in newCache["overlaps"]:
-                cacheA=cachedSimilarities[cache]
-                cacheB=newCache
-                if first in cacheA["similarities"]:
-                    del cacheA["similarities"][first]
-                if second in cacheA["similarities"]:
-                    del cacheA["similarities"][second]
-                if first in cacheA["overlaps"]:
-                    cacheA["overlaps"].remove(first)
-                if second in cacheA["overlaps"]:
-                    cacheA["overlaps"].remove(second)
-                newCommonPos=cacheA["positions"]&cacheB["positions"]
-                if len(newCommonPos)>minOvl:
-                    similarity=getSimilarity(cacheA["consensus"],cacheB["consensus"],newCommonPos,minOvl,minSim)
-                else:
-                    similarity=0
-                if similarity>=minSim:
-                    if len(cacheA["consensus"])<len(cacheB["consensus"]):
-                        cacheA["similarities"][newName]=similarity
-                        similarityIndex.add([similarity,len(newCommonPos),cache,newName])
+        for pair in pairs:
+            bannedClusterNames.update(pair)
+            if pair!=[]:
+                first=pair[0]
+                second=pair[1]
+                newName="mergedCluster_"+str(i)
+                newNames=cachedSimilarities[first]["names"]|cachedSimilarities[second]["names"]
+                newCluster=cachedSimilarities[first]["cluster"]|cachedSimilarities[second]["cluster"]
+                commonPositions=set([x.split("=")[0] for x in cachedSimilarities[first]["consensus"]])&set([x.split("=")[0] for x in cachedSimilarities[second]["consensus"]])
+                newClusterID=identity(cachedSimilarities[first]["clusterID"],cachedSimilarities[second]["clusterID"],commonPositions)
+                newOverlaps=cachedSimilarities[first]["overlaps"]|cachedSimilarities[second]["overlaps"]
+                newOverlaps.remove(first)
+                newOverlaps.remove(second)
+                for overlap in newOverlaps:
+                    cachedSimilarities[overlap]["overlaps"].add(newName)
+                newConsensus=consensus(newClusterID)
+                newSNPPositions=set([SNP.split("=")[0] for SNP in newConsensus])
+                del cachedSimilarities[first]
+                del cachedSimilarities[second]
+
+                newCache = {"names": newNames, "cluster": newCluster, "clusterID": newClusterID, "consensus": newConsensus, "positions": newSNPPositions, "similarities": {}, "overlaps": newOverlaps}
+                for cache in newCache["overlaps"]:
+                    cacheA = cachedSimilarities[cache]
+                    cacheB = newCache
+                    if first in cacheA["similarities"]:
+                        del cacheA["similarities"][first]
+                    if second in cacheA["similarities"]:
+                        del cacheA["similarities"][second]
+                    if first in cacheA["overlaps"]:
+                        cacheA["overlaps"].remove(first)
+                    if second in cacheA["overlaps"]:
+                        cacheA["overlaps"].remove(second)
+                    newCommonPos = cacheA["positions"] & cacheB["positions"]
+                    if len(newCommonPos) > minOvl:
+                        similarity = getSimilarity(cacheA["consensus"], cacheB["consensus"], newCommonPos, minOvl, minSim)
                     else:
-                        cacheB["similarities"][cache]=similarity
-                        similarityIndex.add([similarity,len(newCommonPos),newName,cache])
-            cachedSimilarities[newName]=newCache
-            i+=1
+                        similarity = 0
+                    if similarity >= minSim:
+                        if len(cacheA["consensus"]) < len(cacheB["consensus"]):
+                            cacheA["similarities"][newName] = similarity
+                            similarityIndex.add([similarity, len(newCommonPos), cache, newName])
+                        else:
+                            cacheB["similarities"][cache] = similarity
+                            similarityIndex.add([similarity, len(newCommonPos), newName, cache])
+
+                cachedSimilarities[newName]=newCache
+                i+=1
+
     #This is where you get the results output, needs another shell script or a python script to do the rest
     actualClusters={}
     resultClusters={}
@@ -282,11 +377,9 @@ def getBaseClusterEdges(N,clusters):
 def mergeClusterEdges(clusterEdges):
     newClusterEdges=set()
     newClusterEdges.update(clusterEdges)
-    used=set()
     change=True
     while change==True:
         change=False
-        prevLen=len(newClusterEdges)
         for combination in combinations(newClusterEdges,2):
             clusterEdgeA=combination[0]
             clusterEdgeB=combination[1]
@@ -332,7 +425,6 @@ def flattenProfile(splitReadProfile):
 def keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClusterEdges):
     usefulSplitReads={}
     for splitRead,splitReadInfo in chimericReadIDict.items():
-        splitReadPositions=set(splitReadInfo.keys())
         splitReadProfile=getSplitReadProfile(set(splitReadInfo.keys()),mergedClusterEdges)
         if splitReadProfile in usefulSplitReadProfiles:
             splitReadPositions=flattenProfile(splitReadProfile)
@@ -352,8 +444,7 @@ def keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClus
                 usefulSplitReads[splitRead]=posInfo
     return usefulSplitReads
 
-def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mainFolder,referenceFilePath,minSim,minOvl,minLen,maxID):
-
+def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mainFolder,referenceFilePath,minSim,minOvl,minLen,maxID,nPairs,threadNumber):
     #Loading files
 
     print("Loading reads.")
@@ -465,7 +556,7 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mai
 
     print("All reads processed.")
 
-    baseClusters,fullClusters=clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths)
+    baseClusters,fullClusters=clusterInterlockChimera(minOvl,readIDict,maxID,minLen,minSim,contextDepths,nPairs,threadNumber)
     baseClusters=baseClusters.values()
 
     baseClusterEdges=getBaseClusterEdges(100,baseClusters)
@@ -480,17 +571,20 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mai
         if len(profile)>=2:
             usefulSplitReadProfiles.add(profile)
 
-    mergedSplitReadProfiles=mergeClusterEdges(usefulSplitReadProfiles)
+    ##############################################################################################################
+    #TODO: Test effect of this additional cluster edge merge on accuracy?
+
+    #mergedSplitReadProfiles=mergeClusterEdges(usefulSplitReadProfiles)
+    #newChimericDict = keepUsefulSplitReadsChr(mergedSplitReadProfiles, chimericReadIDict, mergedClusterEdges)
+    ##############################################################################################################
 
     newChimericDict=keepUsefulSplitReadsChr(usefulSplitReadProfiles,chimericReadIDict,mergedClusterEdges)
-
-    #print(newChimericDict["chimeric-CCN_ACA_BMB_0"])
 
     cleanAllReadIDict={}
     cleanAllReadIDict.update(readIDict)
     cleanAllReadIDict.update(newChimericDict)
 
-    cleanAllClusters,cleanFullClusters=clusterInterlockChimera(minOvl,cleanAllReadIDict,maxID,minLen,minSim,contextDepths)
+    cleanAllClusters,cleanFullClusters=clusterInterlockChimera(minOvl,cleanAllReadIDict,maxID,minLen,minSim,contextDepths,nPairs,threadNumber)
 
     #############
     #OUTPUT CODE#
@@ -552,7 +646,6 @@ def nPhase(longReadSNPAssignments,strainName,contextDepthsFilePath,outFolder,mai
     minCov=nPhaseFunctions.generateCoverage(clusterReadFilePath,readFilePath,outPath,windowSize)
 
     outPath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_discordanceVis.tsv")
-    windowSize=10000
     nPhaseFunctions.generateDiscordance(clusterReadFilePath,readFilePath,outPath)
 
     outPath=os.path.join(outFolder,strainName+"_"+str(minOvl)+"_"+str(minSim)+"_"+str(maxID)+"_"+str(minLen)+"_minCov="+str(minCov)+"_filterVis.tsv")
