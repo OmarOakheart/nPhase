@@ -148,11 +148,11 @@ nphase partial --sampleName SAMPLE_NAME --reference REFERENCE --output OUTPUT_FO
 ### nPhase pipeline or algorithm
 
 ```
-nphase pipeline [-h] [--version] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] --sampleName SAMPLE_NAME
+nphase pipeline [-h] [--version] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] [--nPairs [NPAIRS]] --sampleName SAMPLE_NAME
                        --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE --longReadPlatform {ont,pacbio} --R1 SHORT_READ_FILE_R1 --R2
                        SHORT_READ_FILE_R2
 or
-nphase algorithm [-h] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] --sampleName SAMPLE_NAME
+nphase algorithm [-h] [--threads [THREADS]] [--maxID [MAXID]] [--minOvl [MINOVL]] [--minSim [MINSIM]] [--minLen [MINLEN]] [--nPairs [NPAIRS]] --sampleName SAMPLE_NAME
                         --reference REFERENCE --output OUTPUT_FOLDER --longReads LONG_READ_FILE --contextDepth CONTEXT_DEPTHS_FILE --processedLongReads
                         VALIDATED_SNP_ASSIGNMENTS_FILE
 
@@ -177,6 +177,8 @@ additional arguments required by nphase pipeline:
                         Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz
   --R2 SHORTREADFILE_R2
                         Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz
+  --nPairs [NPAIRS]
+                        Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1
 
 additional arguments required by nphase algorithm:
   --contextDepth CONTEXTDEPTHSFILE
@@ -184,6 +186,8 @@ additional arguments required by nphase algorithm:
   --processedLongReads VALIDATEDSNPASSIGNMENTSFILE
                         Path to validated long read SNPs, ex:
                         /home/phased/Individual_1/VariantCalls/longReads/Individual_1.hetPositions.SNPxLongReads.validated.tsv
+  --nPairs [NPAIRS]
+                        Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1
 
 additional arguments potentially required by nphase partial:
   --mappedShortReads MAPPEDSHORTREADS
@@ -197,6 +201,8 @@ additional arguments potentially required by nphase partial:
                         Path to paired end short read FastQ file #1, ex: /home/shortReads/Individual_1_R1.fastq.gz
   --R2 SHORTREADFILE_R2
                         Path to paired end short read FastQ file #2, ex: /home/shortReads/Individual_1_R2.fastq.gz
+  --nPairs [NPAIRS]
+                        Number of overlapping clusters to merge per iterative step in the nPhase algorithm. Higher values can speed up runtime at the cost of accuracy. Default 1
 
 optional arguments:
   -h, --help            show this help message and exit
