@@ -62,6 +62,7 @@ Then you can create a new environment and install nPhase with the following comm
 conda create -n polyploidPhasing python=3.8
 conda activate polyploidPhasing
 conda install -c oakheart nphase
+conda install matplotlib=3.5.3 #Due to a recent issue with plotnine, this step is required for the time being
 ```
 
 ## Without bioconda
