@@ -31,6 +31,7 @@ If you have bioconda you can install nPhase by running the following commands in
 conda create -n polyploidPhasing
 conda activate polyploidPhasing
 conda install -c oakheart nphase
+conda install matplotlib=3.5.3 #Due to a recent issue with plotnine, this step is required for the time being
 ```
 
 Then you can phase your data with the following command:
