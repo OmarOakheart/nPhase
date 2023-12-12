@@ -23,7 +23,7 @@ nPhase is a ploidy agnostic tool developed in python which predicts the haplotyp
 
 # Quick-start
 
-[![Anaconda-Server Badge](https://anaconda.org/oakheart/nphase/badges/installer/conda.svg)](https://conda.anaconda.org/oakheart)
+[nPhase on conda](https://conda.anaconda.org/oakheart/nphase/)
 
 If you have bioconda you can install nPhase by running the following commands in your terminal:
 
