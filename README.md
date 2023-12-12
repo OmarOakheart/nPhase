@@ -57,7 +57,7 @@ nphase cleaning --sampleName Cleaning_1 --resultFolder /path/to/outputFolder/Ind
 
 ## With bioconda
 
-Install bioconda and set the correct channels by following the first two steps here: https://bioconda.github.io/user/install.html
+Install bioconda and set the correct channels by following the steps here: [https://bioconda.github.io/user/install.html](https://bioconda.github.io/)
 
 Then you can create a new environment and install nPhase with the following commands:
 ```
