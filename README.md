@@ -25,14 +25,11 @@ nPhase is a ploidy agnostic tool developed in python which predicts the haplotyp
 
 [nPhase on conda](https://conda.anaconda.org/oakheart/nphase/)
 
-If you have bioconda you can install nPhase by running the following commands in your terminal:
+Conda takes forever to resolve environments, [use mamba or micromamba instead](https://github.com/conda-forge/miniforge). Once installed, you can install nPhase with the following commands:
 
 ```
-conda create -n polyploidPhasing
-conda activate polyploidPhasing
-conda install -c oakheart nphase
-conda install matplotlib=3.5.3
-conda install pandas=1.5.3
+micromamba create -n polyploidPhasing -c oakheart nphase -c bioconda
+micromamba activate polyploidPhasing
 ```
 
 Then you can phase your data with the following command:
@@ -46,8 +43,6 @@ nphase pipeline --sampleName Individual_1 --reference /path/to/Individual_refere
 
 Once you've phased your data, you can use our automated cleaning method on the raw results folder (`/path/to/outputFolder/Individual_1`) with the following command:
 
-
-
 ```
 nphase cleaning --sampleName Cleaning_1 --resultFolder /path/to/outputFolder/Individual_1
                 --longReads /path/to/Individual_1_longReads.fastq.gz --threads 8
@@ -57,15 +52,13 @@ nphase cleaning --sampleName Cleaning_1 --resultFolder /path/to/outputFolder/Ind
 
 ## With bioconda
 
-Install bioconda and set the correct channels by following the steps here: [https://bioconda.github.io/user/install.html](https://bioconda.github.io/)
+Install mamba or micromamba by following the steps [here](https://github.com/conda-forge/miniforge).
 
 Then you can create a new environment and install nPhase with the following commands:
+
 ```
-conda create -n polyploidPhasing python=3.8
-conda activate polyploidPhasing
-conda install -c oakheart nphase
-conda install matplotlib=3.5.3
-conda install pandas=1.5.3
+micromamba create -n polyploidPhasing -c oakheart nphase -c bioconda
+micromamba activate polyploidPhasing
 ```
 
 ## Without bioconda
