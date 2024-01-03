@@ -589,7 +589,7 @@ def generatePhasingVis(dataVisPath,outPath):
     tbl=pd.read_csv(dataVisPath,sep="\t",header=None)
     tbl.columns=["contigName","startPos","endPos","chr","yValue"]
 
-    g=(ggplot(tbl,aes(y="contigName",yend="contigName",x="startPos",xend="endPos",color='contigName'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Position (bp)")+theme(subplots_adjust={'hspace':0.7}))
+    g=(ggplot(tbl,aes(y="contigName",yend="contigName",x="startPos",xend="endPos",color='contigName'))+geom_segment(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+theme(axis_title_y=element_blank(),axis_text_y=element_blank(),axis_ticks_major_y=element_blank())+xlab("Position (bp)"))
 
     ggsave(g,filename=outputSVG,width=18,height=10)
     ggsave(g,filename=outputPNG,width=18,height=10)
@@ -607,7 +607,7 @@ def generateCoverageVis(dataVisPath,outPath):
     tbl=pd.read_csv(dataVisPath,sep="\t",header=None,na_values="NA")
     tbl.columns=["haplotigName","chr","pos","coverage"]
 
-    g=(ggplot(tbl,aes(x="pos",y="coverage",color='haplotigName'))+geom_line(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+ylab("Coverage (X)")+xlab("Position (bp)")+theme(subplots_adjust={'hspace': 0.7}))
+    g=(ggplot(tbl,aes(x="pos",y="coverage",color='haplotigName'))+geom_line(size=1.5)+theme(legend_position="none")+theme(panel_grid_minor=element_blank())+facet_wrap("~chr",scales="free")+ylab("Coverage (X)")+xlab("Position (bp)"))
 
     ggsave(g,filename=outputSVG,width=18,height=10)
     ggsave(g,filename=outputPNG,width=18,height=10)
@@ -630,7 +630,7 @@ def generateDiscordanceVis(dataVisPath,outPath): #This function is very slow wit
     tbl=pd.read_csv(dataVisPath,sep="\t",header=None,comment="#")
     tbl.columns=["cluster","chr","position","base","frequency","coverage"]
 
-    g=(ggplot(tbl,aes(y="frequency",x='cluster'))+facet_wrap("~chr",scales="free")+geom_violin(scale="width")+coord_flip()+ylim(0,1)+xlab("Cluster name")+ylab("Allele frequency (%)")+ggtitle("Allele frequency by cluster (all clusters have same max width)")+theme(subplots_adjust={'wspace': 0.25}))
+    g=(ggplot(tbl,aes(y="frequency",x='cluster'))+facet_wrap("~chr",scales="free")+geom_violin(scale="width")+coord_flip()+ylim(0,1)+xlab("Cluster name")+ylab("Allele frequency (%)")+ggtitle("Allele frequency by cluster (all clusters have same max width)"))
 
     #ggsave(g,filename=outputPNG,width=18,height=10)
     #ggsave(g,filename=outputPDF,width=18,height=10)
@@ -889,8 +889,3 @@ def filterCoverage(clusterReadFilePath,readFilePath,outPath,minCov):
     cleanFullTextOutputFile.close()
 
     pass
-
-
-
-
-
