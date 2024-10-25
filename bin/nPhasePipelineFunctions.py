@@ -25,13 +25,25 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
+    try:
+        #Cleaning up
+        os.remove(samFile)
+    except:
+        return outputLog,"Long reads not mapped to reference"
+    
     #Sort sam file
     sortedHeaderSamFile=os.path.join(outputFolder,strainName+".sorted.header.sam")
     p=subprocess.run(["samtools","sort",passSamFile,"-@",threads,"-o",sortedHeaderSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools","sort",passSamFile,"-@",threads,"-o",sortedHeaderSamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-
+    
+    try:
+        #Cleaning up
+        os.remove(passSamFile)
+    except:
+        return outputLog,"Long reads not mapped to reference"     
+        
     #This looks stupid but is the safest way I could think of to get rid of the SAM header (it gets in the way of another function later)
     sortedSamFile=os.path.join(outputFolder,strainName+".sorted.sam")
     p=subprocess.run(["samtools","view",sortedHeaderSamFile,"-@",threads,"-o",sortedSamFile],stderr=subprocess.PIPE,stdout=subprocess.PIPE, universal_newlines=True)
@@ -41,8 +53,6 @@ def longReadMapping(strainName,longReads,reference,outputFolder,flag,longReadPla
 
     try:
         #Cleaning up
-        os.remove(samFile)
-        os.remove(passSamFile)
         os.remove(sortedHeaderSamFile)
     except:
         return outputLog,"Long reads not mapped to reference"
@@ -67,7 +77,12 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder,threads):
     outputLog+="COMMAND: "+" ".join(["gatk", "AddOrReplaceReadGroups","-I",samFileNoRGPath,"-O",samFile,"-RGID","ID_"+strainName, "-RGLB","LB_"+strainName, "-RGPL","ILLUMINA", "-RGPU","PU_"+strainName, "-RGSM","SM_"+strainName])+"\n\n"
     if p.stderr!="" or p.stdout!="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-
+    try:
+        #Cleaning up
+        os.remove(samFileNoRGPath)
+    except:
+        return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
+        
     #Organizing mapped reads
     bamFile=os.path.join(outputFolder,strainName+".bam")
     sortedBamFile=os.path.join(outputFolder,strainName+".sorted.bam")
@@ -78,12 +93,23 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder,threads):
     outputLog+="COMMAND: "+" ".join(["samtools","view","-@",threads,"-bT",reference,"-q","1",samFile,"-o",bamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-
+    try:
+        #Cleaning up
+        os.remove(samFile)
+    except:
+        return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
+        
     p=subprocess.run(["samtools", "sort", bamFile,"-@",threads, "-o", sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools", "sort", bamFile,"-@",threads, "-o", sortedBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
+    try:
+        #Cleaning up
+        os.remove(bamFile)
+    except:
+        return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
+    
     p=subprocess.run(["samtools", "index","-@",threads, sortedBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools", "index","-@",threads, sortedBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
@@ -96,13 +122,19 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder,threads):
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
 
+    try:
+        #Cleaning up
+        os.remove(sortedBamFile)
+    except:
+        return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
+    
     #Finalizing
     finalBamFile=os.path.join(outputFolder,strainName+".final.bam")
     p=subprocess.run(["samtools", "sort", MDsortedBamFile, "-@",threads,"-o", finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools", "sort", MDsortedBamFile, "-@",threads,"-o", finalBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
         outputLog+="STDERR:\n\n"+p.stderr+"\n\nSTDOUT:\n\n"+p.stdout+"\n\n"
-
+        
     p=subprocess.run(["samtools", "index","-@",threads, finalBamFile],stderr=subprocess.PIPE, stdout=subprocess.PIPE, universal_newlines=True)
     outputLog+="COMMAND: "+" ".join(["samtools", "index","-@",threads, finalBamFile])+"\n\n"
     if p.stderr!="" or p.stdout !="":
@@ -110,10 +142,6 @@ def shortReadMapping(strainName,R1,R2,reference,outputFolder,threads):
 
     try:
         #Cleaning up
-        os.remove(samFileNoRGPath)
-        os.remove(samFile)
-        os.remove(bamFile)
-        os.remove(sortedBamFile)
         os.remove(MDsortedBamFile)
     except:
         return outputLog,"ERROR: Short reads unsuccessfully mapped to reference"
